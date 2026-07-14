@@ -97,6 +97,24 @@ Planning package check (docs/schema receipt):
 pwsh -File docs/verify-planning-package.ps1
 ```
 
+### Archive origin HEAD as an image
+
+Encode a git-type ImageArchive of the remote default branch tip (`origin/HEAD`), then decode, extract to a separate folder, and byte-compare against the clone (same excludes as the encoder: `bin`, `obj`, `.vs`, `node_modules`):
+
+```powershell
+pwsh -File scripts/New-OriginHeadImageArchive.ps1
+# optional:
+#   -Output artifacts\my-tip.png
+#   -ExtractDir artifacts\origin-head-extract
+#   -Format webp
+#   -SkipFetch
+#   -SkipVerify          # encode only
+#   -KeepWorkDir         # keep clone + extract + tar under the stage dir
+#   -Framework net10.0
+```
+
+Default output: `artifacts/origin-head-<shortSha>.png`. Exit is non-zero if the extract tree differs from the clone.
+
 ## CLI
 
 ```bash
