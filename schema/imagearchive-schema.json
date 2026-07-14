@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sharpninja/ImageArchive/schema/imagearchive-schema.json",
+  "title": "ImageArchive Manifest",
+  "description": "Canonical manifest used to build an ImageArchive (RFC 1.0.0)",
+  "type": "object",
+  "required": [
+    "version",
+    "encoder",
+    "archive",
+    "output",
+    "frames"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "RFC version this manifest conforms to"
+    },
+    "encoder": {
+      "type": "object",
+      "required": ["name", "version", "sha256"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "required": ["type", "mimeType", "source"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["git", "zip", "tar", "raw"]
+        },
+        "mimeType": { "type": "string" },
+        "source": {
+          "type": "string",
+          "description": "Path to the source (directory for git, file for zip/tar/raw)"
+        },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "commitHash": { "type": "string" },
+        "originalFileName": { "type": "string" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["path", "format"],
+      "properties": {
+        "path": { "type": "string" },
+        "format": {
+          "type": "string",
+          "enum": ["png", "webp"]
+        }
+      }
+    },
+    "header": {
+      "type": "object",
+      "description": "Default header configuration (can be overridden per frame)",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["text", "image", "folder"]
+        },
+        "text": { "type": "string" },
+        "imagePath": { "type": "string" },
+        "folderPath": { "type": "string" },
+        "qrCode": {
+          "type": "object",
+          "properties": {
+            "content": { "type": "string" },
+            "enabled": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "header": {
+            "type": "object",
+            "description": "Optional per-frame header override"
+          }
+        }
+      }
+    },
+    "preprocessor": {
+      "type": "string",
+      "description": "Optional external command to pipe the archive stream through before encoding"
+    },
+    "postprocessor": {
+      "type": "string",
+      "description": "Optional external command to pipe the extracted stream through after decoding"
+    }
+  },
+  "additionalProperties": false
+}
