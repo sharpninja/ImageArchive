@@ -1,0 +1,104 @@
+schema: mcp-wiki-export/v1
+home:
+  document: home
+documents:
+- id: home
+  title: Home
+  source: generated:home
+  target: Home.md
+  platforms:
+  - github
+  - azure
+- id: functional
+  title: Functional Requirements
+  source: generated:functional
+  target: Functional-Requirements.md
+  platforms:
+  - github
+  - azure
+- id: technical
+  title: Technical Requirements
+  source: generated:technical
+  target: Technical-Requirements.md
+  platforms:
+  - github
+  - azure
+- id: testing
+  title: Testing Requirements
+  source: generated:testing
+  target: Testing-Requirements.md
+  platforms:
+  - github
+  - azure
+- id: mapping
+  title: TR per FR Mapping
+  source: generated:mapping
+  target: TR-per-FR-Mapping.md
+  platforms:
+  - github
+  - azure
+- id: matrix
+  title: Requirements Matrix
+  source: generated:matrix
+  target: Requirements-Matrix.md
+  platforms:
+  - github
+  - azure
+- id: rfc
+  title: ImageArchive RFC
+  source: docs/ImageArchive-RFC.md
+  target: ImageArchive-RFC.md
+  platforms:
+  - github
+  - azure
+- id: arch-overview
+  title: Architecture Overview
+  source: docs/architecture/overview.md
+  target: Architecture-Overview.md
+  platforms:
+  - github
+  - azure
+- id: impl-plan
+  title: Implementation Plan
+  source: docs/plans/ImageArchive-Implementation-Plan.md
+  target: Implementation-Plan.md
+  platforms:
+  - github
+  - azure
+- id: qr-limits
+  title: QR Payload Limits
+  source: docs/qr-payload-limits.md
+  target: QR-Payload-Limits.md
+  platforms:
+  - github
+  - azure
+- id: ac-receipt
+  title: Requirements Coverage Receipt
+  source: docs/receipts-requirements-rfc-1.0.0.md
+  target: Requirements-Coverage-Receipt.md
+  platforms:
+  - github
+  - azure
+navigation:
+- document: home
+  children: []
+- document: rfc
+  children: []
+- document: arch-overview
+  children: []
+- document: impl-plan
+  children: []
+- document: qr-limits
+  children: []
+- document: ac-receipt
+  children: []
+- document: functional
+  children: []
+- document: technical
+  children: []
+- document: testing
+  children: []
+- document: mapping
+  children: []
+- document: matrix
+  children: []

@@ -1,98 +1,120 @@
-using System.CommandLine;
-using System.Security.Cryptography;
-using System.Text.Json;
 using ImageArchive;
-using ImageArchive.Encoders;
-using ImageArchive.Models;
+using ImageArchive.Manifest;
 
-var root = new RootCommand("ImageArchive – embed any archive inside a standard animated image");
+namespace ImageArchive.Cli;
 
-// ------------------------------------------------------------------
-// encode command
-// ------------------------------------------------------------------
-var encodeCmd = new Command("encode", "Create an ImageArchive from a JSON manifest");
-var manifestOption = new Option<FileInfo>("--manifest", "Path to the JSON manifest") { IsRequired = true };
-var outputOption = new Option<FileInfo?>("--output", "Override output path from the manifest");
-encodeCmd.AddOption(manifestOption);
-encodeCmd.AddOption(outputOption);
-
-encodeCmd.SetHandler(async (FileInfo manifestFile, FileInfo? outputOverride) =>
+public static class Program
 {
-    string json = await File.ReadAllTextAsync(manifestFile.FullName);
-    var manifest = JsonSerializer.Deserialize<Manifest>(json)
-                   ?? throw new InvalidOperationException("Invalid manifest");
+    public const int ExitSuccess = 0;
+    public const int ExitValidation = 1;
+    public const int ExitIntegrity = 2;
+    public const int ExitIo = 3;
+    public const int ExitInternal = 4;
 
-    if (outputOverride != null)
-        manifest.Output.Path = outputOverride.FullName;
-
-    // Compute encoder SHA if not supplied
-    if (string.IsNullOrEmpty(manifest.Encoder.Sha256))
+    public static int Main(string[] args)
     {
-        string exePath = Environment.ProcessPath ?? "ImageArchive";
-        if (File.Exists(exePath))
+        try
         {
-            byte[] hash = SHA256.HashData(await File.ReadAllBytesAsync(exePath));
-            manifest.Encoder.Sha256 = Convert.ToHexString(hash).ToLowerInvariant();
+            if (args.Length == 0)
+            {
+                PrintUsage();
+                return ExitValidation;
+            }
+
+            var cmd = args[0].ToLowerInvariant();
+            return cmd switch
+            {
+                "encode" => Encode(args.Skip(1).ToArray()),
+                "decode" => Decode(args.Skip(1).ToArray()),
+                _ => FailValidation($"Unknown command '{args[0]}'.")
+            };
+        }
+        catch (ManifestValidationException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return ExitValidation;
+        }
+        catch (IntegrityException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return ExitIntegrity;
+        }
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return ExitIo;
+        }
+        catch (ArchiveSourceException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return ExitIo;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.ToString());
+            return ExitInternal;
         }
     }
 
-    // Load the source data
-    Stream dataStream;
-    if (manifest.Archive.Type == "git")
+    private static int Encode(string[] args)
     {
-        // TODO: create a proper git archive (tar of .git + working tree)
-        Console.WriteLine("Git archive creation not yet implemented in this skeleton.");
-        return;
+        var manifestPath = GetOpt(args, "--manifest") ?? throw new ManifestValidationException(
+            new ManifestValidationResult { IsValid = false, Errors = new[] { new ManifestValidationError { Path = "args", Message = "--manifest required" } } });
+        var json = File.ReadAllText(manifestPath);
+        var validator = new JsonSchemaManifestValidator();
+        var manifest = validator.Parse(json);
+        var workDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
+        var outPath = Path.IsPathRooted(manifest.Output.Path)
+            ? manifest.Output.Path
+            : Path.GetFullPath(Path.Combine(workDir ?? ".", manifest.Output.Path));
+        Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+
+        using var output = File.Create(outPath);
+        var encoder = new ImageArchiveEncoder();
+        encoder.Encode(manifest, output, new ImageArchiveEncodeOptions
+        {
+            WorkingDirectory = workDir,
+            ToolCommitUrl = Environment.GetEnvironmentVariable("IMAGEARCHIVE_TOOL_COMMIT_URL") ?? "https://github.com/sharpninja/ImageArchive"
+        });
+        return ExitSuccess;
     }
-    else
+
+    private static int Decode(string[] args)
     {
-        dataStream = File.OpenRead(manifest.Archive.Source);
+        var input = GetOpt(args, "--input") ?? throw new ManifestValidationException(
+            new ManifestValidationResult { IsValid = false, Errors = new[] { new ManifestValidationError { Path = "args", Message = "--input required" } } });
+        var output = GetOpt(args, "--output") ?? throw new ManifestValidationException(
+            new ManifestValidationResult { IsValid = false, Errors = new[] { new ManifestValidationError { Path = "args", Message = "--output required" } } });
+
+        using var image = File.OpenRead(input);
+        var decoder = new ImageArchiveDecoder();
+        var result = decoder.Decode(image);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)) ?? ".");
+        using var fs = File.Create(output);
+        result.ArchiveStream.CopyTo(fs);
+        result.ArchiveStream.Dispose();
+        return ExitSuccess;
     }
 
-    // Optional preprocessor
-    if (!string.IsNullOrWhiteSpace(manifest.Preprocessor))
+    private static string? GetOpt(string[] args, string name)
     {
-        // In a full implementation we would pipe through the external command
-        Console.WriteLine($"Preprocessor '{manifest.Preprocessor}' would be applied here.");
+        for (var i = 0; i < args.Length - 1; i++)
+            if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+                return args[i + 1];
+        return null;
     }
 
-    IImageEncoder encoder = manifest.Output.Format.ToLowerInvariant() switch
+    private static void PrintUsage()
     {
-        "png"  => new PngEncoder(),
-        "webp" => throw new NotImplementedException("WebP encoder coming soon"),
-        _      => throw new ArgumentException($"Unsupported format: {manifest.Output.Format}")
-    };
+        Console.Error.WriteLine("Usage:");
+        Console.Error.WriteLine("  ImageArchive.Cli encode --manifest <path>");
+        Console.Error.WriteLine("  ImageArchive.Cli decode --input <image> --output <path>");
+    }
 
-    await encoder.EncodeAsync(dataStream, manifest, manifest.Output.Path);
-    Console.WriteLine($"Created {manifest.Output.Path}");
-}, manifestOption, outputOption);
-
-// ------------------------------------------------------------------
-// decode command
-// ------------------------------------------------------------------
-var decodeCmd = new Command("decode", "Extract an ImageArchive");
-var inputOption = new Option<FileInfo>("--input", "Path to the ImageArchive file") { IsRequired = true };
-var outDirOption = new Option<DirectoryInfo>("--output", "Directory to extract into") { IsRequired = true };
-decodeCmd.AddOption(inputOption);
-decodeCmd.AddOption(outDirOption);
-
-decodeCmd.SetHandler(async (FileInfo input, DirectoryInfo outDir) =>
-{
-    outDir.Create();
-
-    IImageEncoder encoder = new PngEncoder(); // auto-detect later
-    var result = await encoder.DecodeAsync(input.FullName);
-
-    // Write the raw data
-    string outFile = Path.Combine(outDir.FullName, result.Manifest.Archive.OriginalFileName ?? "archive.bin");
-    await using var fs = File.Create(outFile);
-    await result.DataStream.CopyToAsync(fs);
-
-    Console.WriteLine($"Extracted to {outFile}");
-    Console.WriteLine($"Verified {result.FrameSha256s.Count} frames");
-}, inputOption, outDirOption);
-
-root.AddCommand(encodeCmd);
-root.AddCommand(decodeCmd);
-
-return await root.InvokeAsync(args);
+    private static int FailValidation(string msg)
+    {
+        Console.Error.WriteLine(msg);
+        PrintUsage();
+        return ExitValidation;
+    }
+}

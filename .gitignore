@@ -58,3 +58,11 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# MCP / agent local state (do not ignore docs/todo.yaml or docs/wiki.yaml)
+AGENTS-README-FIRST.yaml
+AGENTS-README-FIRST.yaml.deleted-*
+.mcpServer/
+cache/
+mcp.db
+mcps/

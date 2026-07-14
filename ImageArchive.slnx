@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ImageArchive.Cli/ImageArchive.Cli.csproj" />
+    <Project Path="src/ImageArchive/ImageArchive.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ImageArchive.IntegrationTests/ImageArchive.IntegrationTests.csproj" />
+    <Project Path="tests/ImageArchive.UnitTests/ImageArchive.UnitTests.csproj" />
+  </Folder>
+</Solution>
