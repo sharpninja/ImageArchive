@@ -26,7 +26,7 @@ Requirements planning is complete and verified:
 - High-level Round B notes: [`docs/plans/ImageArchive-Implementation-Plan.md`](docs/plans/ImageArchive-Implementation-Plan.md)
 - Schema includes `streamSha256`; RFC is final at [`docs/ImageArchive-RFC.md`](docs/ImageArchive-RFC.md)
 
-**Working tree has no `src/`, `tests/`, or `.sln`** (implementation was deleted deliberately). SDKs **8.0, 9.0, and 10.0** are installed on this machine.
+**Historical note:** this plan was written after a deliberate wipe of `src/`/`tests/`. The tree is **implemented** (see status table above). SDKs **8.0, 9.0, and 10.0** are required.
 
 This plan is the **executable implementation plan**: scaffolding through flagship E2E under Byrd Dev Process v4 (Fowler Red → Green → Refactor, mocks-first, full-suite green gates).
 
@@ -61,11 +61,12 @@ Ship a GPL-3.0 C# reference library + CLI that:
 ### Projects
 
 ```
-ImageArchive.sln
+ImageArchive.slnx
 src/ImageArchive/                      # class library (multi-TFM)
-src/ImageArchive.Cli/                  # CLI (multi-TFM)
+src/ImageArchive.Cli/                  # CLI tool imga (multi-TFM)
 tests/ImageArchive.UnitTests/          # xUnit v3 (multi-TFM)
 tests/ImageArchive.IntegrationTests/   # xUnit v3 (multi-TFM); TEST-E2E-001 lives here
+build/                                 # Nuke 10 (net10.0)
 ```
 
 ### Visibility rules

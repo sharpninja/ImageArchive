@@ -59,6 +59,12 @@ Thumbs.db
 *.temp
 *.log
 
+# Build / package output
+artifacts/
+build/bin/
+build/obj/
+.nuke/temp/
+
 # MCP / agent local state (do not ignore docs/todo.yaml or docs/wiki.yaml)
 AGENTS-README-FIRST.yaml
 AGENTS-README-FIRST.yaml.deleted-*

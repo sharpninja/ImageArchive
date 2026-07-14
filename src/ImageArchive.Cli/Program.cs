@@ -26,6 +26,8 @@ public static class Program
             {
                 "encode" => Encode(args.Skip(1).ToArray()),
                 "decode" => Decode(args.Skip(1).ToArray()),
+                "init" => Init(args.Skip(1).ToArray()),
+                "manifest" => Init(args.Skip(1).ToArray()), // alias
                 _ => FailValidation($"Unknown command '{args[0]}'.")
             };
         }
@@ -96,6 +98,45 @@ public static class Program
         return ExitSuccess;
     }
 
+    /// <summary>
+    /// Write a blank schema-valid manifest for hand-editing.
+    /// Usage: imga init [--output path] [--force]
+    /// </summary>
+    private static int Init(string[] args)
+    {
+        var output = GetOpt(args, "--output")
+            ?? GetOpt(args, "-o")
+            ?? "manifest.json";
+        var force = HasFlag(args, "--force") || HasFlag(args, "-f");
+
+        var path = Path.GetFullPath(output);
+        if (File.Exists(path) && !force)
+        {
+            Console.Error.WriteLine($"Refusing to overwrite existing file: {path} (use --force)");
+            return ExitValidation;
+        }
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var json = BlankManifest.ToJson();
+        File.WriteAllText(path, json);
+
+        // Ensure the blank file validates
+        var validation = new JsonSchemaManifestValidator().ValidateJson(json);
+        if (!validation.IsValid)
+        {
+            Console.Error.WriteLine("Internal error: blank manifest failed schema validation.");
+            foreach (var e in validation.Errors)
+                Console.Error.WriteLine($"  {e.Path}: {e.Message}");
+            return ExitInternal;
+        }
+
+        Console.WriteLine(path);
+        return ExitSuccess;
+    }
+
     private static string? GetOpt(string[] args, string name)
     {
         for (var i = 0; i < args.Length - 1; i++)
@@ -104,11 +145,15 @@ public static class Program
         return null;
     }
 
+    private static bool HasFlag(string[] args, string name) =>
+        args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
+
     private static void PrintUsage()
     {
         Console.Error.WriteLine("Usage:");
-        Console.Error.WriteLine("  ImageArchive.Cli encode --manifest <path>");
-        Console.Error.WriteLine("  ImageArchive.Cli decode --input <image> --output <path>");
+        Console.Error.WriteLine("  imga init [--output <path>] [--force]   Write a blank manifest (default: manifest.json)");
+        Console.Error.WriteLine("  imga encode --manifest <path>");
+        Console.Error.WriteLine("  imga decode --input <image> --output <path>");
     }
 
     private static int FailValidation(string msg)

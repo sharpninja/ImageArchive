@@ -1,4 +1,19 @@
-**Status: Implemented (P0–P10 in tree).** ArchiveType.Raw = 0. Default codec SkiaSharp.
+**Status: Implemented (P0–P10 in tree).** `ArchiveType.Raw = 0`. Default codec SkiaSharp. Real APNG + animated WebP.
+
+| Phase | Name | Status |
+|-------|------|--------|
+| **P0** | Scaffold + public API | done |
+| **P1** | Geometry + pixels | done |
+| **P2** | Header/footer/QR | done |
+| **P3** | Integrity + metadata | done |
+| **P4** | Manifest validation | done |
+| **P5** | APNG via SkiaSharp | done |
+| **P6** | Animated WebP + 60000 ms | done |
+| **P7** | Archive types + git tar | done |
+| **P8** | CLI | done |
+| **P9** | Flagship E2E | done |
+| **P10** | Processors + security | done |
+
 
 # Plan: ImageArchive Implementation (Byrd v4 TDD, P0–P10)
 
@@ -11,7 +26,7 @@ Requirements planning is complete and verified:
 - High-level Round B notes: [`docs/plans/ImageArchive-Implementation-Plan.md`](docs/plans/ImageArchive-Implementation-Plan.md)
 - Schema includes `streamSha256`; RFC is final at [`docs/ImageArchive-RFC.md`](docs/ImageArchive-RFC.md)
 
-**Working tree has no `src/`, `tests/`, or `.sln`** (implementation was deleted deliberately). SDKs **8.0, 9.0, and 10.0** are installed on this machine.
+**Historical note:** this plan was written after a deliberate wipe of `src/`/`tests/`. The tree is **implemented** (see status table above). SDKs **8.0, 9.0, and 10.0** are required.
 
 This plan is the **executable implementation plan**: scaffolding through flagship E2E under Byrd Dev Process v4 (Fowler Red → Green → Refactor, mocks-first, full-suite green gates).
 
@@ -46,11 +61,12 @@ Ship a GPL-3.0 C# reference library + CLI that:
 ### Projects
 
 ```
-ImageArchive.sln
+ImageArchive.slnx
 src/ImageArchive/                      # class library (multi-TFM)
-src/ImageArchive.Cli/                  # CLI (multi-TFM)
+src/ImageArchive.Cli/                  # CLI tool imga (multi-TFM)
 tests/ImageArchive.UnitTests/          # xUnit v3 (multi-TFM)
 tests/ImageArchive.IntegrationTests/   # xUnit v3 (multi-TFM); TEST-E2E-001 lives here
+build/                                 # Nuke 10 (net10.0)
 ```
 
 ### Visibility rules

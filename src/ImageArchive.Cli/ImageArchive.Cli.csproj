@@ -1,14 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Dotnet tools resolve the best matching TFM from a multi-target package -->
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <RootNamespace>ImageArchive.Cli</RootNamespace>
     <AssemblyName>ImageArchive.Cli</AssemblyName>
+    <Version>1.0.0</Version>
+
+    <!-- .NET tool package -->
+    <PackAsTool>true</PackAsTool>
+    <!-- Primary install command: imga  (package id remains ImageArchive.Cli) -->
+    <ToolCommandName>imga</ToolCommandName>
+    <PackageId>ImageArchive.Cli</PackageId>
+    <Title>ImageArchive CLI</Title>
+    <Description>dotnet tool for encoding and decoding ImageArchive multi-frame PNG/WebP containers.</Description>
+    <Authors>sharpninja</Authors>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/sharpninja/ImageArchive</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sharpninja/ImageArchive</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>imagearchive;cli;dotnet-tool;apng;webp</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="System.CommandLine" Version="2.0.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ImageArchive\ImageArchive.csproj" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
   </ItemGroup>
 </Project>

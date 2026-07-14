@@ -45,9 +45,11 @@ public sealed class JsonSchemaManifestValidator : IManifestValidator
             var eval = Schema.Value.Evaluate(doc.RootElement, new EvaluationOptions { OutputFormat = OutputFormat.List });
             if (!eval.IsValid)
             {
-                foreach (var detail in eval.Details.Where(d => d.HasErrors))
+                // JsonSchema.Net 9: HasErrors removed; use Errors dictionary on list-format details
+                foreach (var detail in (eval.Details ?? Enumerable.Empty<EvaluationResults>())
+                             .Where(d => d.Errors is { Count: > 0 }))
                 {
-                    var msg = detail.Errors != null ? string.Join("; ", detail.Errors.Select(e => e.Value)) : "invalid";
+                    var msg = string.Join("; ", detail.Errors!.Select(e => e.Value));
                     errors.Add(new ManifestValidationError { Path = detail.InstanceLocation.ToString(), Message = msg });
                 }
                 if (errors.Count == 0)

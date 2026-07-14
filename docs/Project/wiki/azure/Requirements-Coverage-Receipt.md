@@ -24,10 +24,11 @@ Default image codec: **SkiaSharp** (TR-CONT-SKIA-001)
 
 ## Locked decisions
 
-- Image codec default: SkiaSharp
-- TFMs: net8.0;net9.0;net10.0
-- Tests: xUnit v3
+- Image codec default: SkiaSharp **3.119.4** (not 4.x while ZXing Skia binding remains on 3.119.x)
+- TFMs: net8.0;net9.0;net10.0 (product); Nuke build project net10.0
+- Tests: xUnit v3 **3.2.2**
 - Git payload: compressed tar of .git + worktree
+- CLI tool command: `imga` (init / encode / decode)
 
 ## AC to TEST coverage matrix
 

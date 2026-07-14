@@ -89,6 +89,35 @@ public class HeaderAndCliTests
     }
 
     [Fact]
+    public void Cli_init_writes_blank_manifest()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ia-init-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = Path.Combine(dir, "manifest.json");
+            var exit = ImageArchive.Cli.Program.Main(new[] { "init", "--output", path });
+            Assert.Equal(0, exit);
+            Assert.True(File.Exists(path));
+            var json = File.ReadAllText(path);
+            var result = new JsonSchemaManifestValidator().ValidateJson(json);
+            Assert.True(result.IsValid, string.Join("; ", result.Errors.Select(e => e.Message)));
+            var m = ManifestJson.Deserialize(json);
+            Assert.Equal("1.0.0", m.Version);
+            Assert.Equal(ArchiveType.Raw, m.Archive.Type);
+            Assert.True(m.Frames.Count >= 1);
+
+            // without --force, second init fails
+            var again = ImageArchive.Cli.Program.Main(new[] { "init", "--output", path });
+            Assert.Equal(1, again);
+
+            var forced = ImageArchive.Cli.Program.Main(new[] { "init", "--output", path, "--force" });
+            Assert.Equal(0, forced);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { /* ignore */ } }
+    }
+
+    [Fact]
     [Trait("AC", "AC-FR-CLI-001-1")]
     [Trait("AC", "AC-FR-CLI-001-2")]
     public void Cli_encode_decode_exit_zero()

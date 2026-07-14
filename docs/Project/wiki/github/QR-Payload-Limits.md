@@ -4,10 +4,10 @@ ImageArchive places QR codes in a **50×50** pixel cell with margins **T=2, R=2,
 
 ## Library choice
 
-| Role | Package |
-|------|---------|
-| Encode | QRCoder (ECC level M) |
-| Decode | ZXing.Net (SkiaSharp bitmap bridge) |
+| Role | Package (pinned) |
+|------|------------------|
+| Encode | QRCoder **1.8.0** (ECC level M) |
+| Decode | ZXing.Net **0.16.11** + ZXing.Net.Bindings.SkiaSharp **0.16.22** (SkiaSharp **3.119.4** bridge) |
 
 Modules from QRCoder are nearest-neighbor scaled into 47×47 when the native matrix size differs.
 
