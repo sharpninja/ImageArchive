@@ -4,6 +4,18 @@
 
 The container format is defined by RFC 1.0.0: [`docs/ImageArchive-RFC.md`](docs/ImageArchive-RFC.md).
 
+## Example image
+
+Multi-frame APNG of this repository at `origin/HEAD` (`cce977c`), produced by `scripts/New-OriginHeadImageArchive.ps1` (encode + decode/extract/diff verified). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
+
+![ImageArchive of origin HEAD (cce977c)](docs/images/origin-head.png)
+
+Regenerate:
+
+```powershell
+pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png
+```
+
 ## Features
 
 - Fixed **1024×1024** frames (50 px header, 924 px data, 50 px footer)
