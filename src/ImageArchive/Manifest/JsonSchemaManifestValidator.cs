@@ -104,6 +104,8 @@ public sealed class JsonSchemaManifestValidator : IManifestValidator
             errors.Add(new ManifestValidationError { Path = "frames", Message = "minItems is 1" });
         if (!string.IsNullOrEmpty(m.StreamSha256) && !Hex64.IsMatch(m.StreamSha256))
             errors.Add(new ManifestValidationError { Path = "streamSha256", Message = "must be 64 hex chars" });
+        if (m.FrameWidth is int fw && !Geometry.FrameGeometry.TryValidateWidth(fw, out var widthErr))
+            errors.Add(new ManifestValidationError { Path = "frameWidth", Message = widthErr ?? "invalid" });
         return new ManifestValidationResult { IsValid = errors.Count == 0, Errors = errors };
     }
 }

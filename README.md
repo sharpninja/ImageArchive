@@ -8,24 +8,25 @@ The container format is defined by RFC 1.0.0: [`docs/ImageArchive-RFC.md`](docs/
 
 Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` with **dark chrome** and the project header banner (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
 
-Header banner (1024×68):
+Header banner (512×67):
 
 ![ImageArchive header banner](docs/images/readme-header-banner.png)
 
-Sample archive (dark chrome + banner):
+Sample archive (512×512, dark chrome + banner):
 
 ![ImageArchive of origin HEAD (dark)](docs/images/origin-head.png)
 
 Regenerate:
 
 ```powershell
-pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark
+pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark -Width 512
 ```
 
 ## Features
 
-- Fixed **1024×1024** frames (67 px header, 890 px data, 67 px footer)
-- Data region capacity **2,734,080** bytes per frame (RGB, zero-padded final frame)
+- Square frames, default **1024×1024** (configurable **512–1440** via `frameWidth` / `--width`)
+- Chrome: 67 px header + 67 px footer; data height = `frameWidth − 134`
+- Data capacity per frame: `frameWidth × (frameWidth − 134) × 3` (default **2,734,080** bytes)
 - QR cells **67×67** (65×65 modules, **1 px** margin all sides); general payload max **200** chars
 - Header: free-form text, image, or numbered folder round-robin; top-right QR
 - Footer: left QR (frame data SHA-256), `Frame N of M` + SHA text, right QR (tool commit URL)
@@ -143,6 +144,15 @@ pwsh -File scripts/New-OriginHeadImageArchive.ps1
 
 Default output: `artifacts/origin-head-<shortSha>.png`. Exit is non-zero if the extract tree differs from the clone.
 
+## NuGet package READMEs
+
+Published packages ship **package-specific** READMEs (not this repo root file):
+
+| Package | README packed from |
+|---------|-------------------|
+| `ImageArchive` | [`src/ImageArchive/README.md`](src/ImageArchive/README.md) |
+| `ImageArchive.Cli` | [`src/ImageArchive.Cli/README.md`](src/ImageArchive.Cli/README.md) |
+
 ## CLI
 
 ```bash
@@ -151,11 +161,12 @@ imga init
 imga init --output path/to/manifest.json --force
 
 dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.json
-dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.json --dark
+dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.json --dark --width 1024
 dotnet run --project src/ImageArchive.Cli -- decode --input archive.png --output extracted.bin
 ```
 
-Dark chrome can be set with CLI `--dark` and/or the manifest boolean `"dark": true` (schema field; default `false`). CLI `--dark` forces dark on. Header/footer bands and text invert; QR codes stay black-on-white for phone scanners. Data-region payload colors are unchanged.
+- **Dark chrome:** CLI `--dark` and/or manifest `"dark": true` (default `false`). CLI `--dark` forces on. Header/footer bands and text invert; QR codes stay black-on-white. Data-region payload colors are unchanged.
+- **Frame size:** CLI `--width <n>` and/or manifest `"frameWidth": <n>` (512–1440, default 1024). Frames stay square. CLI `--width` overrides the manifest. Capacity per frame is `width × (width − 134) × 3` bytes.
 
 `imga init` (alias: `imga manifest`) writes a starter manifest with placeholder fields. Edit `archive.source`, `output.path`, and related fields before encode. Manifest `output.path` and `output.format` (`png` or `webp`) control encode output. Optional env `IMAGEARCHIVE_TOOL_COMMIT_URL` sets the footer right QR.
 | Exit code | Meaning |

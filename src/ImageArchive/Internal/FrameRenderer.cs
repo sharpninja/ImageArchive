@@ -214,14 +214,17 @@ internal static class FrameRenderer
     private static void DrawHeaderImage(byte[] rgb, string path)
     {
         // Header images keep original colors even when dark chrome is enabled.
+        // Free-form band only: right QrCellSize columns are reserved for the header QR.
         if (!File.Exists(path)) return;
         using var bmp = SKBitmap.Decode(path);
         if (bmp == null) return;
-        using var scaled = bmp.Resize(new SKImageInfo(FrameGeometry.Width, FrameGeometry.HeaderHeight), SKSamplingOptions.Default);
+        var freeWidth = FrameGeometry.Width - FrameGeometry.QrCellSize;
+        if (freeWidth <= 0) return;
+        using var scaled = bmp.Resize(new SKImageInfo(freeWidth, FrameGeometry.HeaderHeight), SKSamplingOptions.Default);
         if (scaled == null) return;
         for (var y = 0; y < FrameGeometry.HeaderHeight; y++)
         {
-            for (var x = 0; x < FrameGeometry.Width; x++)
+            for (var x = 0; x < freeWidth; x++)
             {
                 var c = scaled.GetPixel(x, y);
                 var i = (y * FrameGeometry.Width + x) * 3;

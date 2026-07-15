@@ -32,9 +32,13 @@ Full GitHub tree URLs with a 40-char commit SHA are about **88** characters and 
 
 | Constant | Value |
 |----------|------:|
-| Header / footer height | 67 |
+| Header / footer height | 67 (fixed) |
 | QR cell | 67×67 |
 | QR modules | 65×65 |
 | Margins | 1 px all sides |
-| Data height | 890 |
-| Frame capacity | 2,734,080 bytes |
+| Frame width W | 512–1440 (default 1024) |
+| Free-form header width | W − 67 (QR cell reserved) |
+| Data height | W − 134 (default 890) |
+| Frame capacity | W × (W − 134) × 3 (default 2,734,080 bytes) |
+
+QR polarity is always black modules on a white cell (including under dark chrome).

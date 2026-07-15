@@ -1,7 +1,4 @@
 <Solution>
-  <Folder Name="/build/">
-    <Project Path="build/_build.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/ImageArchive.Cli/ImageArchive.Cli.csproj" />
     <Project Path="src/ImageArchive/ImageArchive.csproj" />

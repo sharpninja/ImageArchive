@@ -21,6 +21,8 @@ public sealed class ImageArchiveEncodeOptions
     public string? WorkingDirectory { get; init; }
     /// <summary>When true, invert header/footer chrome (black background, light foreground/QR).</summary>
     public bool Dark { get; init; }
+    /// <summary>Optional square frame width override (512–1440). Overrides manifest.frameWidth when set.</summary>
+    public int? FrameWidth { get; init; }
 }
 
 public sealed class EncodeResult
@@ -65,88 +67,93 @@ public sealed class ImageArchiveEncoder : IImageArchiveEncoder
         var qr = options.QrCodeService ?? new DefaultQrCodeService();
         var encoder = options.Encoder ?? ImageArchiveCodecs.CreateDefaultEncoder(manifest.Output.Format);
 
-        var frames = new List<FrameBitmap>();
-        var offset = 0;
-        var frameCount = Math.Max(1, (int)Math.Ceiling(archiveBytes.Length / (double)FrameGeometry.FrameCapacityBytes));
-        // Ensure frames list length for header overrides
-        while (manifest.Frames.Count < frameCount)
-            manifest.Frames.Add(new FrameManifestSection());
+        // CLI/options width overrides manifest; persist effective width into embedded manifest.
+        var frameWidth = options.FrameWidth
+            ?? FrameGeometry.ClampOrDefault(manifest.FrameWidth);
+        FrameGeometry.ValidateWidth(frameWidth);
+        manifest.FrameWidth = frameWidth;
 
-        // CLI --dark / options.Dark forces dark; otherwise honor manifest.dark.
-        // Persist effective value so embedded jsonManifest matches chrome.
-        if (options.Dark)
-            manifest.Dark = true;
-        var dark = manifest.Dark;
-        for (var i = 0; i < frameCount; i++)
+        using (FrameGeometry.Use(frameWidth))
         {
-            var remaining = archiveBytes.Length - offset;
-            var take = Math.Min(FrameGeometry.FrameCapacityBytes, Math.Max(0, remaining));
-            var slice = take > 0 ? archiveBytes.AsSpan(offset, take) : ReadOnlySpan<byte>.Empty;
-            var dataRegion = PixelPacker.PackDataRegion(slice);
-            var sha = Sha256Hex.Compute(dataRegion);
-            var header = manifest.Frames[i].Header ?? manifest.Header;
-            frames.Add(FrameRenderer.RenderFrame(
-                i, frameCount, dataRegion, sha, header, options.ToolCommitUrl, qr, options.WorkingDirectory,
-                dark: dark));
-            offset += take;
-        }
+            var frames = new List<FrameBitmap>();
+            var offset = 0;
+            var capacity = FrameGeometry.FrameCapacityBytes;
+            var frameCount = Math.Max(1, (int)Math.Ceiling(archiveBytes.Length / (double)capacity));
+            while (manifest.Frames.Count < frameCount)
+                manifest.Frames.Add(new FrameManifestSection());
 
-        var streamSha = Sha256Hex.Compute(archiveBytes);
-        // Also hash concatenated data regions (with padding) for RFC stream integrity of pixel payload
-        using (var concat = new MemoryStream())
-        {
+            if (options.Dark)
+                manifest.Dark = true;
+            var dark = manifest.Dark;
+            for (var i = 0; i < frameCount; i++)
+            {
+                var remaining = archiveBytes.Length - offset;
+                var take = Math.Min(capacity, Math.Max(0, remaining));
+                var slice = take > 0 ? archiveBytes.AsSpan(offset, take) : ReadOnlySpan<byte>.Empty;
+                var dataRegion = PixelPacker.PackDataRegion(slice);
+                var sha = Sha256Hex.Compute(dataRegion);
+                var header = manifest.Frames[i].Header ?? manifest.Header;
+                frames.Add(FrameRenderer.RenderFrame(
+                    i, frameCount, dataRegion, sha, header, options.ToolCommitUrl, qr, options.WorkingDirectory,
+                    dark: dark));
+                offset += take;
+            }
+
+            // Hash concatenated data regions (with padding) for stream integrity
+            string streamSha;
+            using (var concat = new MemoryStream())
+            {
+                offset = 0;
+                for (var i = 0; i < frameCount; i++)
+                {
+                    var remaining = archiveBytes.Length - offset;
+                    var take = Math.Min(capacity, Math.Max(0, remaining));
+                    var slice = take > 0 ? archiveBytes.AsSpan(offset, take) : ReadOnlySpan<byte>.Empty;
+                    concat.Write(PixelPacker.PackDataRegion(slice));
+                    offset += take;
+                }
+                streamSha = Sha256Hex.Compute(concat.ToArray());
+            }
+
+            manifest.StreamSha256 = streamSha;
+            var schemaJson = LoadEmbeddedSchema();
+            var manifestJson = ManifestJson.Serialize(manifest);
+
+            var metadata = new ArchiveMetadata
+            {
+                EncoderName = manifest.Encoder.Name,
+                EncoderVersion = manifest.Encoder.Version,
+                EncoderSha256 = manifest.Encoder.Sha256,
+                MimeType = manifest.Archive.MimeType,
+                ArchiveType = manifest.Archive.Type,
+                JsonSchema = schemaJson,
+                JsonManifest = manifestJson,
+                SourceUrl = manifest.Archive.SourceUrl,
+                CommitHash = manifest.Archive.CommitHash,
+                OriginalFileName = manifest.Archive.OriginalFileName
+            };
+            metadata.AdditionalTextChunks["originalLength"] = archiveBytes.Length.ToString();
+            metadata.AdditionalTextChunks["frameWidth"] = frameWidth.ToString();
             offset = 0;
             for (var i = 0; i < frameCount; i++)
             {
                 var remaining = archiveBytes.Length - offset;
-                var take = Math.Min(FrameGeometry.FrameCapacityBytes, Math.Max(0, remaining));
+                var take = Math.Min(capacity, Math.Max(0, remaining));
                 var slice = take > 0 ? archiveBytes.AsSpan(offset, take) : ReadOnlySpan<byte>.Empty;
-                var dataRegion = PixelPacker.PackDataRegion(slice);
-                concat.Write(dataRegion);
+                metadata.AdditionalTextChunks[$"frameSha256.{i}"] = Sha256Hex.Compute(PixelPacker.PackDataRegion(slice));
                 offset += take;
             }
-            streamSha = Sha256Hex.Compute(concat.ToArray());
+
+            encoder.Encode(output, frames, metadata, FrameGeometry.AnimationDelayMilliseconds);
+
+            return new EncodeResult
+            {
+                FrameCount = frameCount,
+                StreamSha256 = streamSha,
+                EmbeddedManifest = manifest,
+                Metadata = metadata
+            };
         }
-
-        manifest.StreamSha256 = streamSha;
-        var schemaJson = LoadEmbeddedSchema();
-        var manifestJson = ManifestJson.Serialize(manifest);
-
-        var metadata = new ArchiveMetadata
-        {
-            EncoderName = manifest.Encoder.Name,
-            EncoderVersion = manifest.Encoder.Version,
-            EncoderSha256 = manifest.Encoder.Sha256,
-            MimeType = manifest.Archive.MimeType,
-            ArchiveType = manifest.Archive.Type,
-            JsonSchema = schemaJson,
-            JsonManifest = manifestJson,
-            SourceUrl = manifest.Archive.SourceUrl,
-            CommitHash = manifest.Archive.CommitHash,
-            OriginalFileName = manifest.Archive.OriginalFileName
-        };
-        metadata.AdditionalTextChunks["originalLength"] = archiveBytes.Length.ToString();
-        // Per-frame hashes for fail-closed integrity when QR decode is unreliable
-        offset = 0;
-        for (var i = 0; i < frameCount; i++)
-        {
-            var remaining = archiveBytes.Length - offset;
-            var take = Math.Min(FrameGeometry.FrameCapacityBytes, Math.Max(0, remaining));
-            var slice = take > 0 ? archiveBytes.AsSpan(offset, take) : ReadOnlySpan<byte>.Empty;
-            var dataRegion = PixelPacker.PackDataRegion(slice);
-            metadata.AdditionalTextChunks[$"frameSha256.{i}"] = Sha256Hex.Compute(dataRegion);
-            offset += take;
-        }
-
-        encoder.Encode(output, frames, metadata, FrameGeometry.AnimationDelayMilliseconds);
-
-        return new EncodeResult
-        {
-            FrameCount = frameCount,
-            StreamSha256 = streamSha,
-            EmbeddedManifest = manifest,
-            Metadata = metadata
-        };
     }
 
     private static string LoadEmbeddedSchema()

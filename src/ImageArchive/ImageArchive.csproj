@@ -37,6 +37,10 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\schema\imagearchive-schema.json" Link="schema\imagearchive-schema.json" />
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+    <!-- Package-specific README (not the repo root README). -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- Paths match package README: images/... -->
+    <None Include="..\..\docs\images\readme-header-banner.png" Pack="true" PackagePath="images/" />
+    <None Include="..\..\docs\images\origin-head.png" Pack="true" PackagePath="images/" />
   </ItemGroup>
 </Project>

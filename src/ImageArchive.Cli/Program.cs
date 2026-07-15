@@ -71,13 +71,27 @@ public static class Program
             : Path.GetFullPath(Path.Combine(workDir ?? ".", manifest.Output.Path));
         Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
 
+        int? widthOpt = null;
+        var widthStr = GetOpt(args, "--width");
+        if (widthStr != null)
+        {
+            if (!int.TryParse(widthStr, out var w))
+                throw new ManifestValidationException(new ManifestValidationResult
+                {
+                    IsValid = false,
+                    Errors = new[] { new ManifestValidationError { Path = "args", Message = "--width must be an integer" } }
+                });
+            widthOpt = w;
+        }
+
         using var output = File.Create(outPath);
         var encoder = new ImageArchiveEncoder();
         encoder.Encode(manifest, output, new ImageArchiveEncodeOptions
         {
             WorkingDirectory = workDir,
             ToolCommitUrl = Environment.GetEnvironmentVariable("IMAGEARCHIVE_TOOL_COMMIT_URL") ?? "https://github.com/sharpninja/ImageArchive",
-            Dark = HasFlag(args, "--dark")
+            Dark = HasFlag(args, "--dark"),
+            FrameWidth = widthOpt
         });
         return ExitSuccess;
     }
@@ -153,7 +167,9 @@ public static class Program
     {
         Console.Error.WriteLine("Usage:");
         Console.Error.WriteLine("  imga init [--output <path>] [--force]   Write a blank manifest (default: manifest.json)");
-        Console.Error.WriteLine("  imga encode --manifest <path> [--dark]  Encode; --dark inverts header/footer chrome");
+        Console.Error.WriteLine("  imga encode --manifest <path> [--dark] [--width <n>]");
+        Console.Error.WriteLine("      --dark   invert header/footer chrome");
+        Console.Error.WriteLine("      --width  square frame edge 512–1440 (overrides manifest frameWidth; default 1024)");
         Console.Error.WriteLine("  imga decode --input <image> --output <path>");
     }
 

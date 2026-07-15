@@ -44,7 +44,11 @@
   Invert header/footer chrome (manifest dark=true and encode --dark).
 
 .PARAMETER HeaderBanner
-  Optional 1024xN header image (default: docs/images/readme-header-banner.png when present).
+  Optional header image (default: docs/images/readme-header-banner.png when present).
+  Prefer width matching -Width (or free-form width = Width - 67 for the QR cell).
+
+.PARAMETER Width
+  Square frame edge length (512-1440). Default: 512. Written to manifest frameWidth and passed as encode --width.
 
 .EXAMPLE
   pwsh -File scripts/New-OriginHeadImageArchive.ps1
@@ -53,7 +57,7 @@
   pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output .\artifacts\tip.png -KeepWorkDir
 
 .EXAMPLE
-  pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark
+  pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark -Width 512
 #>
 [CmdletBinding()]
 param(
@@ -67,6 +71,8 @@ param(
     [switch]$KeepWorkDir,
     [switch]$Dark,
     [string]$HeaderBanner = "",
+    [ValidateRange(512, 1440)]
+    [int]$Width = 512,
     [string]$WorkDir = "",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -557,6 +563,7 @@ origin HEAD $shortSha
             format = $Format
         }
         dark = [bool]$Dark
+        frameWidth = [int]$Width
         header = $headerSection
         frames = @(@{})
     }
@@ -565,13 +572,13 @@ origin HEAD $shortSha
     [System.IO.File]::WriteAllText($manifestPath, $json + "`n")
 
     Write-Host "Manifest: $manifestPath"
-    Write-Host "Encoding -> $Output$(if ($Dark) { ' (dark)' })"
+    Write-Host "Encoding -> $Output (width=$Width$(if ($Dark) { ', dark' }))"
 
     # Footer right QR: same repo-root-at-commit link as the header QR.
     $env:IMAGEARCHIVE_TOOL_COMMIT_URL = $repoAtCommitQr
     $encodeArgs = @(
         "run", "--project", $cliProject, "-c", $Configuration, "-f", $Framework, "--no-build", "--",
-        "encode", "--manifest", $manifestPath
+        "encode", "--manifest", $manifestPath, "--width", "$Width"
     )
     if ($Dark) { $encodeArgs += "--dark" }
     & dotnet @encodeArgs

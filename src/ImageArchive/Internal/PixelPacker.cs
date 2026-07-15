@@ -20,25 +20,29 @@ internal static class PixelPacker
 
     public static byte[] ExtractDataRegion(FrameBitmap frame)
     {
-        if (frame.Width != FrameGeometry.Width || frame.Height != FrameGeometry.Height)
-            throw new ImageArchiveException($"Frame must be {FrameGeometry.Width}x{FrameGeometry.Height}.");
+        if (frame.Width != frame.Height)
+            throw new ImageArchiveException($"Frame must be square (got {frame.Width}x{frame.Height}).");
+        FrameGeometry.ValidateWidth(frame.Width);
 
-        var bpp = frame.BytesPerPixel;
-        var data = new byte[FrameGeometry.FrameCapacityBytes];
-        var src = frame.Pixels;
-        var di = 0;
-        for (var y = FrameGeometry.DataRegionFirstRow; y < FrameGeometry.FooterFirstRow; y++)
+        using (FrameGeometry.Use(frame.Width))
         {
-            var rowStart = y * FrameGeometry.Width * bpp;
-            for (var x = 0; x < FrameGeometry.Width; x++)
+            var bpp = frame.BytesPerPixel;
+            var data = new byte[FrameGeometry.FrameCapacityBytes];
+            var src = frame.Pixels;
+            var di = 0;
+            for (var y = FrameGeometry.DataRegionFirstRow; y < FrameGeometry.FooterFirstRow; y++)
             {
-                var pi = rowStart + x * bpp;
-                data[di++] = src[pi];     // R
-                data[di++] = src[pi + 1]; // G
-                data[di++] = src[pi + 2]; // B
+                var rowStart = y * FrameGeometry.Width * bpp;
+                for (var x = 0; x < FrameGeometry.Width; x++)
+                {
+                    var pi = rowStart + x * bpp;
+                    data[di++] = src[pi];     // R
+                    data[di++] = src[pi + 1]; // G
+                    data[di++] = src[pi + 2]; // B
+                }
             }
+            return data;
         }
-        return data;
     }
 
     public static void WriteDataRegion(byte[] fullFrameRgb, ReadOnlySpan<byte> dataRegionRgb)

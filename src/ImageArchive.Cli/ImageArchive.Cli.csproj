@@ -22,12 +22,29 @@
     <PackageTags>imagearchive;cli;dotnet-tool;apng;webp</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IsPackable>true</IsPackable>
+    <!-- PackAsTool publishes deps into the nupkg; SkiaSharp ships multi-MB .pdb per RID.
+         Those blow past nuget.org's 250 MB package limit (413). Keep runtime natives only. -->
+    <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
+    <CopyDocumentationFilesFromPackages>false</CopyDocumentationFilesFromPackages>
+    <IncludeSymbols>false</IncludeSymbols>
+    <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ImageArchive\ImageArchive.csproj" />
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+    <!-- Package-specific README (not the repo root README). -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- Paths match package README: images/... -->
+    <None Include="..\..\docs\images\readme-header-banner.png" Pack="true" PackagePath="images/" />
+    <None Include="..\..\docs\images\origin-head.png" Pack="true" PackagePath="images/" />
   </ItemGroup>
+  <!-- PackAsTool still copies SkiaSharp native .pdb into PublishDir; strip before nupkg is built. -->
+  <Target Name="DeletePublishedPdbs" AfterTargets="Publish">
+    <ItemGroup>
+      <_PublishedPdbs Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_PublishedPdbs)" TreatErrorsAsWarnings="true" />
+  </Target>
 </Project>

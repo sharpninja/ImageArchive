@@ -68,6 +68,74 @@ public class FooterQrLayoutTests
     }
 
     [Fact]
+    [Trait("AC", "AC-FR-HDR-002-1")]
+    public void Header_image_does_not_paint_into_qr_cell()
+    {
+        // Solid magenta header image sized full-frame-wide would previously overwrite the QR zone.
+        // Free-form header must stop at Width - QrCellSize so the QR cell stays reserved.
+        var dir = Path.Combine(Path.GetTempPath(), "imga-hdr-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var imgPath = Path.Combine(dir, "header.png");
+            using (var bmp = new SkiaSharp.SKBitmap(FrameGeometry.Width, FrameGeometry.HeaderHeight))
+            {
+                for (var y = 0; y < bmp.Height; y++)
+                for (var x = 0; x < bmp.Width; x++)
+                    bmp.SetPixel(x, y, new SkiaSharp.SKColor(255, 0, 255));
+                using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+                using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                using var fs = File.Create(imgPath);
+                data.SaveTo(fs);
+            }
+
+            var payload = PixelPacker.PackDataRegion(new byte[] { 1 });
+            var sha = Sha256Hex.Compute(payload);
+            var frame = FrameRenderer.RenderFrame(
+                0, 1, payload, sha,
+                new HeaderManifestSection
+                {
+                    Type = HeaderContentType.Image,
+                    ImagePath = imgPath,
+                    QrCode = new QrCodeManifestSection { Content = "https://ex.com/h", Enabled = true }
+                },
+                "https://ex.com/t",
+                new DefaultQrCodeService(),
+                dir);
+
+            var freeWidth = FrameGeometry.Width - FrameGeometry.QrCellSize;
+            // Free-form pixels are magenta from the header image
+            var freeI = (0 * FrameGeometry.Width + freeWidth - 1) * 3;
+            Assert.Equal(255, frame.Pixels[freeI]);
+            Assert.Equal(0, frame.Pixels[freeI + 1]);
+            Assert.Equal(255, frame.Pixels[freeI + 2]);
+
+            // QR cell top-left corner is the white quiet-zone margin, not magenta
+            var cellI = (0 * FrameGeometry.Width + freeWidth) * 3;
+            Assert.True(frame.Pixels[cellI] > 250 && frame.Pixels[cellI + 1] > 250 && frame.Pixels[cellI + 2] > 250,
+                "Header QR cell must not be painted by header image content.");
+
+            // Header QR cell: full 67x67 must be only black/white (no magenta from the banner)
+            for (var y = 0; y < FrameGeometry.QrCellSize; y++)
+            for (var x = freeWidth; x < FrameGeometry.Width; x++)
+            {
+                var i = (y * FrameGeometry.Width + x) * 3;
+                var r = frame.Pixels[i];
+                var g = frame.Pixels[i + 1];
+                var b = frame.Pixels[i + 2];
+                var isWhite = r > 250 && g > 250 && b > 250;
+                var isBlack = r < 5 && g < 5 && b < 5;
+                Assert.True(isWhite || isBlack,
+                    $"Header QR cell pixel ({x},{y}) must be pure B/W, got RGB({r},{g},{b})");
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Fact]
     public void Manifest_dark_true_enables_dark_chrome_without_options_flag()
     {
         var payload = new byte[] { 1, 2, 3 };

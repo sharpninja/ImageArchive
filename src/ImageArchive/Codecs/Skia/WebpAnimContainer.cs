@@ -135,12 +135,16 @@ internal static class WebpAnimContainer
                 var still = WrapAsWebp(bitstream);
                 using var sk = SKBitmap.Decode(still)
                     ?? throw new ImageArchiveException("Skia failed to decode WebP frame.");
+                var w = sk.Width;
+                var h = sk.Height;
+                if (w != h)
+                    throw new ImageArchiveException($"WebP frame must be square (got {w}x{h}).");
                 frames.Add(new FrameBitmap
                 {
-                    Width = FrameGeometry.Width,
-                    Height = FrameGeometry.Height,
+                    Width = w,
+                    Height = h,
                     Format = PixelFormat.Rgb24,
-                    Pixels = RgbFromSk(sk)
+                    Pixels = RgbFromSk(sk, w, h)
                 });
             }
         }
@@ -198,14 +202,14 @@ internal static class WebpAnimContainer
 
     private static void Write24(Span<byte> dest, uint value) => Write24(dest, (int)value);
 
-    private static byte[] RgbFromSk(SKBitmap bmp)
+    private static byte[] RgbFromSk(SKBitmap bmp, int width, int height)
     {
-        var rgb = new byte[FrameGeometry.Width * FrameGeometry.Height * 3];
-        for (var y = 0; y < FrameGeometry.Height && y < bmp.Height; y++)
-        for (var x = 0; x < FrameGeometry.Width && x < bmp.Width; x++)
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height && y < bmp.Height; y++)
+        for (var x = 0; x < width && x < bmp.Width; x++)
         {
             var c = bmp.GetPixel(x, y);
-            var i = (y * FrameGeometry.Width + x) * 3;
+            var i = (y * width + x) * 3;
             rgb[i] = c.Red; rgb[i + 1] = c.Green; rgb[i + 2] = c.Blue;
         }
         return rgb;

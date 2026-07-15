@@ -78,8 +78,15 @@ internal static class ApngContainer
         var meta = new ArchiveMetadata();
         int? delay = null;
         uint frameCountHint = 0;
+        var canvasWidth = FrameGeometry.DefaultWidth;
+        var canvasHeight = FrameGeometry.DefaultWidth;
         foreach (var (type, data) in chunks)
         {
+            if (type == "IHDR" && data.Length >= 8)
+            {
+                canvasWidth = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(0, 4));
+                canvasHeight = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(4, 4));
+            }
             if (type == "acTL" && data.Length >= 4)
                 frameCountHint = BinaryPrimitives.ReadUInt32BigEndian(data);
             if (type == "tEXt")
@@ -92,6 +99,10 @@ internal static class ApngContainer
                     ApplyMeta(meta, tv.Value.Key, tv.Value.Value);
             }
         }
+
+        if (canvasWidth != canvasHeight)
+            throw new ImageArchiveException($"APNG canvas must be square (got {canvasWidth}x{canvasHeight}).");
+        FrameGeometry.ValidateWidth(canvasWidth);
 
         // Rebuild frames from fcTL + IDAT/fdAT sequences; decode each via full PNG + Skia
         var frames = new List<FrameBitmap>();
@@ -108,7 +119,7 @@ internal static class ApngContainer
                 o += p.Length;
             }
             idatParts.Clear();
-            frames.Add(DecodeIdatFrameViaSkia(idat));
+            frames.Add(DecodeIdatFrameViaSkia(idat, canvasWidth, canvasHeight));
         }
 
         foreach (var (type, data) in chunks)
@@ -141,32 +152,32 @@ internal static class ApngContainer
         };
     }
 
-    private static FrameBitmap DecodeIdatFrameViaSkia(byte[] idatZlib)
+    private static FrameBitmap DecodeIdatFrameViaSkia(byte[] idatZlib, int width, int height)
     {
         // Build a minimal still PNG and decode with Skia (lossless RGB path)
         using var ms = new MemoryStream();
         ms.Write(PngChunkIo.Signature);
         Span<byte> ihdr = stackalloc byte[13];
-        BinaryPrimitives.WriteInt32BigEndian(ihdr, FrameGeometry.Width);
-        BinaryPrimitives.WriteInt32BigEndian(ihdr[4..], FrameGeometry.Height);
+        BinaryPrimitives.WriteInt32BigEndian(ihdr, width);
+        BinaryPrimitives.WriteInt32BigEndian(ihdr[4..], height);
         ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
         PngChunkIo.WriteChunk(ms, "IHDR", ihdr);
         PngChunkIo.WriteChunk(ms, "IDAT", idatZlib);
         PngChunkIo.WriteChunk(ms, "IEND", ReadOnlySpan<byte>.Empty);
         using var sk = SKBitmap.Decode(ms.ToArray())
             ?? throw new ImageArchiveException("Skia failed to decode APNG frame PNG.");
-        var rgb = new byte[FrameGeometry.Width * FrameGeometry.Height * 3];
-        for (var y = 0; y < FrameGeometry.Height; y++)
-        for (var x = 0; x < FrameGeometry.Width; x++)
+        var rgb = new byte[width * height * 3];
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
         {
             var c = sk.GetPixel(x, y);
-            var i = (y * FrameGeometry.Width + x) * 3;
+            var i = (y * width + x) * 3;
             rgb[i] = c.Red; rgb[i + 1] = c.Green; rgb[i + 2] = c.Blue;
         }
         return new FrameBitmap
         {
-            Width = FrameGeometry.Width,
-            Height = FrameGeometry.Height,
+            Width = width,
+            Height = height,
             Format = PixelFormat.Rgb24,
             Pixels = rgb
         };

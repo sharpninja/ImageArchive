@@ -9,7 +9,7 @@
 
 ImageArchive is a container format that embeds an arbitrary binary archive (Git repository + working tree, zip, tarball, or any other stream of bytes) inside a standard lossless animated image (APNG or animated WebP).
 
-Every frame is a fixed-size 1024×1024 image that is fully human-readable and machine-verifiable. The payload is stored as raw RGB pixel data between a fixed 67-pixel visual header and a fixed 67-pixel visual footer.
+Every frame is a **square** image that is fully human-readable and machine-verifiable. The **default** edge length is **1024** pixels; encoders **must** allow **512–1440** inclusive (manifest `frameWidth` and/or encode option / CLI `--width`). The payload is stored as raw RGB pixel data between a fixed 67-pixel visual header and a fixed 67-pixel visual footer.
 
 ## 2. Design Goals
 
@@ -21,23 +21,33 @@ Every frame is a fixed-size 1024×1024 image that is fully human-readable and ma
 
 ## 3. Frame Geometry (Mandatory)
 
-Every frame **must** be exactly:
+Every frame **must** be square:
 
 ```
-Width:  1024 pixels
-Height: 1024 pixels
+Width:  W pixels   (W ∈ [512, 1440], default 1024)
+Height: W pixels
 ```
 
-Layout of each frame (top → bottom):
+Chrome heights are fixed; the data region scales with `W`:
 
-| Region   | Rows          | Height | Purpose                          |
-|----------|---------------|--------|----------------------------------|
-| Header   | 0 – 66        | 67 px  | Free-form visual content + QR    |
-| Data     | 67 – 956      | 890 px | Raw RGB payload                  |
-| Footer   | 957 – 1023    | 67 px  | Frame number, SHA, two QR codes  |
+| Region   | Rows (0-based)        | Height      | Purpose                          |
+|----------|-----------------------|-------------|----------------------------------|
+| Header   | 0 – 66                | 67 px       | Free-form visual content + QR    |
+| Data     | 67 – (W − 68)         | W − 134 px  | Raw RGB payload                  |
+| Footer   | (W − 67) – (W − 1)    | 67 px       | Frame number, SHA, two QR codes  |
+
+**Default layout (W = 1024)**
+
+| Region   | Rows          | Height |
+|----------|---------------|--------|
+| Header   | 0 – 66        | 67     |
+| Data     | 67 – 956      | 890    |
+| Footer   | 957 – 1023    | 67     |
 
 **Bytes of data capacity per frame**
-`1024 × 890 × 3 = 2,734,080 bytes` (~2.61 MiB)
+`W × (W − 134) × 3`
+
+Default: `1024 × 890 × 3 = 2,734,080 bytes` (~2.61 MiB)
 
 ## 4. Pixel Encoding of Payload
 
@@ -67,9 +77,9 @@ Layout of each frame (top → bottom):
   Intended use: repository root URL at the archived commit (e.g. `https://github.com/owner/repo/tree/<sha>`).
   For non-Git archives the encoder may put any URL or leave it empty.
 
-## 6. Visual Footer (rows 957–1023)
+## 6. Visual Footer (rows W−67 … W−1; default 957–1023)
 
-- Background: pure white
+- Background: pure white (or inverted when dark chrome is enabled; QR cells remain white)
 - Layout (left → right):
 
   1. **Left QR code** (67×67 with same margins as above)

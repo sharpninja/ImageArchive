@@ -28,6 +28,39 @@ public class ManifestTests
     }
 
     [Fact]
+    public void FrameWidth_in_schema_range_is_valid()
+    {
+        var json = """
+        {
+          "version": "1.0.0",
+          "encoder": { "name": "t", "version": "1", "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" },
+          "archive": { "type": "raw", "mimeType": "application/octet-stream", "source": "a.bin" },
+          "output": { "path": "out.iar", "format": "png" },
+          "frameWidth": 768,
+          "frames": [ {} ]
+        }
+        """;
+        var v = new JsonSchemaManifestValidator();
+        Assert.True(v.ValidateJson(json).IsValid);
+        Assert.Equal(768, v.Parse(json).FrameWidth);
+    }
+
+    [Fact]
+    public void FrameWidth_out_of_range_fails_model_validation()
+    {
+        var m = new ImageArchiveManifest
+        {
+            Version = "1.0.0",
+            Encoder = new EncoderManifestSection { Name = "t", Version = "1", Sha256 = new string('a', 64) },
+            Archive = new ArchiveManifestSection { Type = ArchiveType.Raw, MimeType = "x", Source = "a" },
+            Output = new OutputManifestSection { Path = "o", Format = ContainerFormat.Png },
+            FrameWidth = 200,
+            Frames = new List<FrameManifestSection> { new() }
+        };
+        Assert.False(new JsonSchemaManifestValidator().Validate(m).IsValid);
+    }
+
+    [Fact]
     public void Dark_boolean_round_trips_in_schema_and_model()
     {
         var json = """

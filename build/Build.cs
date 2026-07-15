@@ -77,8 +77,8 @@ class Build : NukeBuild
     Target Restore => _ => _
         .Executes(() =>
         {
-            DotNetRestore(s => s
-                .SetProjectFile(Solution));
+            // Solution is product-only (build/_build.csproj is intentionally not listed).
+            DotNetRestore(s => s.SetProjectFile(Solution));
         });
 
     Target Compile => _ => _
@@ -125,11 +125,15 @@ class Build : NukeBuild
         .Executes(() =>
         {
             PackagesDirectory.CreateDirectory();
-            DotNetPack(s => ConfigurePack(s, CliProjectFile));
+            // PackAsTool re-publishes into bin; allow pack to rebuild publish output so
+            // DeletePublishedPdbs (strips huge SkiaSharp .pdb) always runs.
+            DotNetPack(s => ConfigurePack(s, CliProjectFile).DisableNoBuild());
         });
 
     DotNetPackSettings ConfigurePack(DotNetPackSettings s, AbsolutePath projectFile)
     {
+        // DisableGitVersionTask: GitVersion.MsBuild otherwise rewrites PackageVersion late and
+        // ignores -p:PackageVersion (e.g. publish of 0.5.1 while tag is still v0.5.0).
         return s
             .SetProject(projectFile)
             .SetConfiguration(Configuration)
@@ -140,9 +144,10 @@ class Build : NukeBuild
             .SetVersion(EffectivePackageVersion)
             .SetProperty("Version", EffectivePackageVersion)
             .SetProperty("PackageVersion", EffectivePackageVersion)
-            .SetAssemblyVersion(GitVersion?.AssemblySemVer)
-            .SetFileVersion(GitVersion?.AssemblySemFileVer)
-            .SetInformationalVersion(GitVersion?.InformationalVersion);
+            .SetProperty("DisableGitVersionTask", "true")
+            .SetAssemblyVersion(GitVersion?.AssemblySemVer ?? EffectivePackageVersion + ".0")
+            .SetFileVersion(GitVersion?.AssemblySemFileVer ?? EffectivePackageVersion + ".0")
+            .SetInformationalVersion(GitVersion?.InformationalVersion ?? EffectivePackageVersion);
     }
 
     /// <summary>Pack library + CLI tool packages.</summary>

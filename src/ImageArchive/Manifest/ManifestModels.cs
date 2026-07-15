@@ -12,6 +12,11 @@ public sealed class ImageArchiveManifest
     public string? StreamSha256 { get; set; }
     /// <summary>When true, invert header/footer chrome (black background, light foreground/QR).</summary>
     public bool Dark { get; set; }
+    /// <summary>
+    /// Square frame edge length in pixels (width = height). Default 1024. Allowed range 512–1440.
+    /// Data-region capacity is width × (width − 134) × 3 bytes.
+    /// </summary>
+    public int? FrameWidth { get; set; }
     public HeaderManifestSection? Header { get; set; }
     public List<FrameManifestSection> Frames { get; set; } = new() { new() };
     public string? Preprocessor { get; set; }

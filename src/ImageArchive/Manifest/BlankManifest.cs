@@ -34,6 +34,7 @@ public static class BlankManifest
             "format": "png"
           },
           "dark": false,
+          "frameWidth": 1024,
           "header": {
             "type": "text",
             "text": "ImageArchive",

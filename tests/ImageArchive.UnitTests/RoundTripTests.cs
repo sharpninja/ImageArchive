@@ -102,9 +102,45 @@ public class RoundTripTests
 
     [Fact]
     [Trait("AC", "AC-FR-GEOM-002-4")]
-    public void Capacity_constant_2734080()
+    public void Capacity_default_2734080()
     {
         Assert.Equal(2_734_080, FrameGeometry.FrameCapacityBytes);
+    }
+
+    [Fact]
+    public void Round_trip_custom_frame_width_512()
+    {
+        var payload = Encoding.UTF8.GetBytes("width-512-payload");
+        var manifest = new ImageArchiveManifest
+        {
+            Version = "1.0.0",
+            Encoder = new EncoderManifestSection { Name = "t", Version = "1", Sha256 = new string('a', 64) },
+            Archive = new ArchiveManifestSection { Type = ArchiveType.Raw, MimeType = "application/octet-stream", Source = "x" },
+            Output = new OutputManifestSection { Path = "o.png", Format = ContainerFormat.Png },
+            FrameWidth = 512,
+            Header = new HeaderManifestSection
+            {
+                Type = HeaderContentType.Text,
+                Text = "w512",
+                QrCode = new QrCodeManifestSection { Content = "https://ex.com/w", Enabled = true }
+            },
+            Frames = new List<FrameManifestSection> { new() }
+        };
+        using var outMs = new MemoryStream();
+        var enc = new ImageArchiveEncoder().Encode(manifest, new MemoryStream(payload), outMs,
+            new ImageArchiveEncodeOptions { ToolCommitUrl = "https://ex.com/t" });
+        Assert.Equal(512, enc.EmbeddedManifest.FrameWidth);
+        outMs.Position = 0;
+        var decoded = new ImageArchiveDecoder().Decode(outMs);
+        Assert.Equal(payload, ReadAll(decoded.ArchiveStream));
+        Assert.Equal(512, decoded.Manifest?.FrameWidth);
+    }
+
+    private static byte[] ReadAll(Stream s)
+    {
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
     }
 
     private static byte[] TamperPngManifestStreamSha(byte[] png, string newHash)

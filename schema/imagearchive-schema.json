@@ -65,6 +65,13 @@
       "default": false,
       "description": "When true, invert header and footer chrome (black background, light text). QR codes remain black modules on white cells for scanner compatibility. Data-region payload colors are unchanged. CLI --dark forces true regardless of this field."
     },
+    "frameWidth": {
+      "type": "integer",
+      "minimum": 512,
+      "maximum": 1440,
+      "default": 1024,
+      "description": "Square frame edge length in pixels (width equals height). Header and footer chrome are 67px each; data region height is frameWidth-134. Capacity per frame is frameWidth*(frameWidth-134)*3 bytes. CLI --width overrides this value."
+    },
     "header": {
       "type": "object",
       "description": "Default header configuration (can be overridden per frame)",
