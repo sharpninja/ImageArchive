@@ -4,6 +4,8 @@
 - [Implementation Plan](Implementation-Plan)
 - [QR Payload Limits](QR-Payload-Limits)
 - [Requirements Coverage Receipt](Requirements-Coverage-Receipt)
+- [AI Agent Discovery](AI-Agent-Discovery)
+- [Git-Payload Metadata Guidelines](Git-Payload-Metadata-Guidelines)
 - [Functional Requirements](Functional-Requirements)
 - [Technical Requirements](Technical-Requirements)
 - [Testing Requirements](Testing-Requirements)

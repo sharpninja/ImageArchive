@@ -38,7 +38,7 @@ Optional env: `IMAGEARCHIVE_TOOL_COMMIT_URL` for the footer right QR.
 | `ImageArchive` | `src/ImageArchive/README.md` | Library API; ships sample images under `images/` |
 | `ImageArchive.Cli` | `src/ImageArchive.Cli/README.md` | PackAsTool; strips SkiaSharp `.pdb` from publish to stay under nuget.org size limit |
 
-Repo root `README.md` is project-oriented (build, tests, Nuke). Sample assets default to **512×512** frames (`docs/images/origin-head.png`) with a **512×67** banner.
+Repo root `README.md` is project-oriented (build, tests, Nuke). Sample assets default to **512×512** animated WebP (`docs/images/origin-head.webp`) with a **512×67** PNG banner.
 
 ## Runtime stack (locked pins)
 
@@ -63,7 +63,8 @@ tests/ImageArchive.UnitTests/
 tests/ImageArchive.IntegrationTests/
 build/                            # Nuke host (_build.csproj); run via build.ps1 / build.sh
 schema/imagearchive-schema.json
-docs/images/                      # sample banner + origin-head APNG
+docs/images/                      # sample banner (PNG) + origin-head animated WebP
+docs/ai-agent-discovery.md        # machine-readable metadata for agents
 scripts/New-OriginHeadImageArchive.ps1
 ```
 

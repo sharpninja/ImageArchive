@@ -144,6 +144,9 @@ public sealed class ImageArchiveEncoder : IImageArchiveEncoder
                 offset += take;
             }
 
+            // AI/tool discoverability (tEXt/WebP meta) without vision/OCR — see docs/ai-agent-discovery.md
+            DiscoverabilityTextChunks.Apply(metadata, frameCount, streamSha);
+
             encoder.Encode(output, frames, metadata, FrameGeometry.AnimationDelayMilliseconds);
 
             return new EncodeResult

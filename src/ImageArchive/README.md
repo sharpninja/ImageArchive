@@ -16,9 +16,9 @@ Header banner (512×67):
 
 ![ImageArchive header banner](images/readme-header-banner.png)
 
-Sample multi-frame archive (512×512, dark chrome + banner; open as APNG to step frames):
+Sample multi-frame archive (512×512 animated WebP, dark chrome + banner; open in a WebP-capable viewer to step frames):
 
-![ImageArchive sample](images/origin-head.png)
+![ImageArchive sample](images/origin-head.webp)
 
 ## Quick start
 
@@ -86,7 +86,12 @@ Command-line tool (separate package):
 ```bash
 dotnet tool install -g ImageArchive.Cli
 imga encode --manifest path/to/manifest.json
+imga decode --input archive.png --output payload.bin
 ```
+
+## For AI agents
+
+Encoded images include PNG `tEXt` keys such as `Archive-Format`, `Decoder-Repo`, `Payload-SHA256`, `AI-Instructions`, plus full `jsonManifest` / `jsonSchema`. Open the **original multi-frame** file (do not re-export a single frame). Guide: [ai-agent-discovery.md](https://github.com/sharpninja/ImageArchive/blob/main/docs/ai-agent-discovery.md).
 
 ## Docs and license
 

@@ -6,6 +6,7 @@ using ImageArchive.Geometry;
 using ImageArchive.Integrity;
 using ImageArchive.Internal;
 using ImageArchive.Manifest;
+// DiscoverabilityTextChunks in Integrity; PngChunkIo via InternalsVisibleTo
 
 namespace ImageArchive.UnitTests;
 
@@ -98,6 +99,35 @@ public class RoundTripTests
         using var corrupt = new MemoryStream(tampered);
         Assert.Throws<IntegrityException>(() =>
             new ImageArchiveDecoder().Decode(corrupt, new ImageArchiveDecodeOptions { VerifyFrameIntegrity = true }));
+    }
+
+    [Fact]
+    public void Png_encodes_discoverability_text_chunks_and_apng_control()
+    {
+        var payload = Encoding.UTF8.GetBytes("discoverability-meta");
+        var manifest = NewManifest(ContainerFormat.Png);
+        using var outMs = new MemoryStream();
+        var enc = new ImageArchiveEncoder().Encode(manifest, new MemoryStream(payload), outMs, new ImageArchiveEncodeOptions());
+        outMs.Position = 0;
+        var chunks = PngChunkIo.ReadChunks(outMs);
+        Assert.Contains(chunks, c => c.Type == "acTL");
+        Assert.Contains(chunks, c => c.Type == "fcTL");
+        var text = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (type, data) in chunks)
+        {
+            if (type != "tEXt") continue;
+            var tv = PngChunkIo.ParseTextChunk(data);
+            if (tv != null) text[tv.Value.Key] = tv.Value.Value;
+        }
+        foreach (var key in DiscoverabilityTextChunks.RequiredKeywords)
+            Assert.True(text.ContainsKey(key), $"missing discoverability tEXt key: {key}");
+        Assert.Equal(DiscoverabilityTextChunks.ArchiveFormatValue, text["Archive-Format"]);
+        Assert.Equal(DiscoverabilityTextChunks.DecoderRepoValue, text["Decoder-Repo"]);
+        Assert.Equal(enc.StreamSha256.ToLowerInvariant(), text["Payload-SHA256"]);
+        Assert.Equal(enc.FrameCount.ToString(), text["Frame-Count"]);
+        Assert.Contains("imga decode", text["AI-Instructions"], StringComparison.OrdinalIgnoreCase);
+        Assert.True(text.ContainsKey("encoderName"));
+        Assert.True(text.ContainsKey("jsonManifest"));
     }
 
     [Fact]

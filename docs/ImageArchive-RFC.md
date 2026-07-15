@@ -117,6 +117,25 @@ Boolean, default `false`. When `true`, header and footer chrome use inverted col
 
 Additional free-form text chunks are permitted.
 
+### Discoverability text chunks (recommended for agents)
+
+Encoders **should** also emit the following keys (PNG `tEXt` / equivalent WebP metadata) so AI agents can decode without vision or OCR. See `docs/ai-agent-discovery.md`.
+
+| Keyword | Description |
+|---------|-------------|
+| `Archive-Format` | Format id, e.g. `imagearchive-v1.0.0` |
+| `Payload-Type` | Same as `archiveType` (`git` / `zip` / `tar` / `raw`) |
+| `Decoder-Repo` | URL of the decoder/spec repository |
+| `Payload-SHA256` | Lowercase hex of the concatenated data-region stream (same as `streamSha256`) |
+| `Frame-Info` | e.g. `1 of N` |
+| `Frame-Count` | Decimal frame count |
+| `Encoding-Method` | Short accurate description of RGB24 data-region packing |
+| `AI-Instructions` | One or two sentences with next steps for an automated agent |
+| `Creation-Tool` | Encoder product name and version |
+| `Sidecar-Expected` | `true` or `false` |
+
+**Note:** Exporting a single animation frame as a new PNG often **strips** text and APNG control chunks. Agents must open the original multi-frame container.
+
 ## 8. Per-Frame Integrity
 
 For every frame the encoder **must**:

@@ -1,7 +1,7 @@
 {
   "schema": "mcp-requirements-wiki/v1",
   "platform": "github",
-  "generatedAtUtc": "2026-07-15T02:20:35.8299544+00:00",
+  "generatedAtUtc": "2026-07-15T02:44:43.7868743+00:00",
   "documents": [
     "Home.md",
     "Functional-Requirements.md",
@@ -13,6 +13,8 @@
     "Architecture-Overview.md",
     "Implementation-Plan.md",
     "QR-Payload-Limits.md",
-    "Requirements-Coverage-Receipt.md"
+    "Requirements-Coverage-Receipt.md",
+    "AI-Agent-Discovery.md",
+    "Git-Payload-Metadata-Guidelines.md"
   ]
 }

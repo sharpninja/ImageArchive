@@ -23,9 +23,9 @@ Header banner (512×67):
 
 ![ImageArchive header banner](images/readme-header-banner.png)
 
-Sample multi-frame archive (512×512, dark chrome; open as APNG to step frames):
+Sample multi-frame archive (512×512 animated WebP, dark chrome; open in a WebP-capable viewer to step frames):
 
-![ImageArchive sample](images/origin-head.png)
+![ImageArchive sample](images/origin-head.webp)
 
 ## Commands
 

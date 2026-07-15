@@ -79,6 +79,20 @@ documents:
   platforms:
   - github
   - azure
+- id: ai-discovery
+  title: AI Agent Discovery
+  source: docs/ai-agent-discovery.md
+  target: AI-Agent-Discovery.md
+  platforms:
+  - github
+  - azure
+- id: metadata-guidelines
+  title: Git-Payload Metadata Guidelines
+  source: docs/git-payload-apng-metadata-guidelines.md
+  target: Git-Payload-Metadata-Guidelines.md
+  platforms:
+  - github
+  - azure
 navigation:
 - document: home
   children: []
@@ -91,6 +105,10 @@ navigation:
 - document: qr-limits
   children: []
 - document: ac-receipt
+  children: []
+- document: ai-discovery
+  children: []
+- document: metadata-guidelines
   children: []
 - document: functional
   children: []

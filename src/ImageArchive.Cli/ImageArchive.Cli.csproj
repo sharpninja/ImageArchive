@@ -38,7 +38,7 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
     <!-- Paths match package README: images/... -->
     <None Include="..\..\docs\images\readme-header-banner.png" Pack="true" PackagePath="images/" />
-    <None Include="..\..\docs\images\origin-head.png" Pack="true" PackagePath="images/" />
+    <None Include="..\..\docs\images\origin-head.webp" Pack="true" PackagePath="images/" />
   </ItemGroup>
   <!-- PackAsTool still copies SkiaSharp native .pdb into PublishDir; strip before nupkg is built. -->
   <Target Name="DeletePublishedPdbs" AfterTargets="Publish">

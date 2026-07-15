@@ -57,7 +57,7 @@
   pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output .\artifacts\tip.png -KeepWorkDir
 
 .EXAMPLE
-  pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark -Width 512
+  pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.webp -Format webp -Dark -Width 512
 #>
 [CmdletBinding()]
 param(

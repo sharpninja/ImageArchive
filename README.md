@@ -12,14 +12,14 @@ Header banner (512×67):
 
 ![ImageArchive header banner](docs/images/readme-header-banner.png)
 
-Sample archive (512×512, dark chrome + banner):
+Sample archive (512×512 animated WebP, dark chrome + banner):
 
-![ImageArchive of origin HEAD (dark)](docs/images/origin-head.png)
+![ImageArchive of origin HEAD (dark)](docs/images/origin-head.webp)
 
 Regenerate:
 
 ```powershell
-pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark -Width 512
+pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.webp -Format webp -Dark -Width 512
 ```
 
 ## Features
@@ -200,11 +200,22 @@ var result = new ImageArchiveDecoder().Decode(image);
 
 Public entry points include `IImageArchiveEncoder` / `IImageArchiveDecoder`, `IImageEncoder` / `IImageDecoder` (Skia defaults), `IManifestValidator`, and `FrameGeometry` constants.
 
+## For AI agents
+
+ImageArchive files are self-describing via PNG `tEXt` (or WebP meta) **without OCR**:
+
+1. Open the **original multi-frame** file (do not re-save a single frame; that drops chunks).
+2. Read `Archive-Format`, `Decoder-Repo`, `Payload-SHA256`, `AI-Instructions`, `jsonManifest`, `jsonSchema`.
+3. Decode: `dotnet tool install -g ImageArchive.Cli` then `imga decode --input <file> --output <out.bin>`.
+
+Full guide: [`docs/ai-agent-discovery.md`](docs/ai-agent-discovery.md).
+
 ## Documentation
 
 | Doc | Purpose |
 |-----|---------|
 | [`docs/ImageArchive-RFC.md`](docs/ImageArchive-RFC.md) | Format specification (canonical) |
+| [`docs/ai-agent-discovery.md`](docs/ai-agent-discovery.md) | Machine-readable metadata for agents |
 | [`schema/imagearchive-schema.json`](schema/imagearchive-schema.json) | Manifest JSON Schema (`streamSha256`) |
 | [`docs/qr-payload-limits.md`](docs/qr-payload-limits.md) | QR 65×65 payload limits |
 | [`docs/plans/ImageArchive-Implementation-Plan.md`](docs/plans/ImageArchive-Implementation-Plan.md) | Implementation plan / public API |
