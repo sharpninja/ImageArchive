@@ -143,6 +143,74 @@ function Get-FileSha256Hex([string]$Path) {
     return $hash.Hash.ToLowerInvariant()
 }
 
+# QR non-hex payload ceiling (DefaultQrCodeService.MaxPayloadLength).
+$script:QrMaxPayloadLength = 60
+
+function ConvertTo-HttpsRepoRoot {
+    param([Parameter(Mandatory)][string]$RemoteUrl)
+    $u = $RemoteUrl.Trim().TrimEnd('/')
+    # git@github.com:owner/repo.git -> https://github.com/owner/repo
+    if ($u -match '^git@github\.com:(?<owner>[^/]+)/(?<repo>.+?)(?:\.git)?$') {
+        return "https://github.com/$($Matches.owner)/$($Matches.repo)"
+    }
+    if ($u -match 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?/?$') {
+        return "https://github.com/$($Matches.owner)/$($Matches.repo)"
+    }
+    # strip .git suffix for https remotes
+    if ($u -match '\.git$') {
+        $u = $u.Substring(0, $u.Length - 4)
+    }
+    return $u
+}
+
+<#
+  Repo root at a specific commit (not the commit details page).
+  GitHub:  https://github.com/owner/repo/tree/<sha>
+  Azure DevOps: remote?version=GC<sha>
+#>
+function Get-RepoRootAtCommitUrl {
+    param(
+        [Parameter(Mandatory)][string]$RemoteUrl,
+        [Parameter(Mandatory)][string]$CommitSha,
+        [int]$MaxLength = 0
+    )
+    $root = ConvertTo-HttpsRepoRoot -RemoteUrl $RemoteUrl
+    $sha = $CommitSha.Trim()
+
+    if ($root -match '^https://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)$') {
+        $prefix = "https://github.com/$($Matches.owner)/$($Matches.repo)/tree/"
+        $shaUse = $sha
+        if ($MaxLength -gt 0 -and ($prefix.Length + $shaUse.Length) -gt $MaxLength) {
+            $room = $MaxLength - $prefix.Length
+            if ($room -lt 7) {
+                throw "Cannot fit GitHub tree URL under $MaxLength chars (prefix length $($prefix.Length))."
+            }
+            $shaUse = $sha.Substring(0, [Math]::Min($sha.Length, $room))
+        }
+        return $prefix + $shaUse
+    }
+
+    if ($root -match 'dev\.azure\.com|visualstudio\.com') {
+        $sep = if ($root.Contains('?')) { '&' } else { '?' }
+        $url = $root + $sep + "version=GC$sha"
+        if ($MaxLength -gt 0 -and $url.Length -gt $MaxLength) {
+            $room = $MaxLength - ($root + $sep + "version=GC").Length
+            if ($room -lt 7) {
+                throw "Cannot fit Azure DevOps commit URL under $MaxLength chars."
+            }
+            $url = $root + $sep + "version=GC" + $sha.Substring(0, [Math]::Min($sha.Length, $room))
+        }
+        return $url
+    }
+
+    # Unknown host: best-effort root + #commit=<sha>
+    $url = "$root#commit=$sha"
+    if ($MaxLength -gt 0 -and $url.Length -gt $MaxLength) {
+        $url = $url.Substring(0, $MaxLength)
+    }
+    return $url
+}
+
 function Test-PathExcluded {
     param(
         [string]$Root,
@@ -419,21 +487,14 @@ try {
     }
 
     $repoName = Split-Path -Leaf $RepoRoot
-    $commitUrl = ""
-    if ($originUrl -match 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/.]+)') {
-        $commitUrl = "https://github.com/$($Matches.owner)/$($Matches.repo)/commit/$sha"
-    }
-    elseif ($originUrl -match 'dev\.azure\.com') {
-        $commitUrl = $originUrl.TrimEnd('/') + "?version=GC$sha"
-    }
-    else {
-        $commitUrl = $originUrl
-    }
+    $repoRootHttps = ConvertTo-HttpsRepoRoot -RemoteUrl $originUrl
+    # Full-length tree URL for manifest metadata (sourceUrl).
+    $repoAtCommitFull = Get-RepoRootAtCommitUrl -RemoteUrl $originUrl -CommitSha $sha
+    # QR payloads must be <= 60 chars: shorten the commit id in the path if needed.
+    $repoAtCommitQr = Get-RepoRootAtCommitUrl -RemoteUrl $originUrl -CommitSha $sha -MaxLength $script:QrMaxPayloadLength
 
-    $headerQr = $commitUrl
-    if ($headerQr.Length -gt 60) {
-        $headerQr = $headerQr.Substring(0, 60)
-    }
+    Write-Host "Repo at commit (full): $repoAtCommitFull"
+    Write-Host "Repo at commit (QR):   $repoAtCommitQr ($($repoAtCommitQr.Length) chars)"
 
     # Manifest lives outside clone so it is not packed into the git archive payload.
     $manifestPath = Join-Path $stageFull "origin-head.manifest.json"
@@ -453,7 +514,7 @@ origin HEAD $shortSha
             type             = "git"
             mimeType         = "application/x-git"
             source           = "clone"
-            sourceUrl        = $originUrl
+            sourceUrl        = $repoAtCommitFull
             commitHash       = $sha
             originalFileName = "$repoName.git-archive"
         }
@@ -465,7 +526,7 @@ origin HEAD $shortSha
             type   = "text"
             text   = $headerText
             qrCode = [ordered]@{
-                content = $headerQr
+                content = $repoAtCommitQr
                 enabled = $true
             }
         }
@@ -478,7 +539,8 @@ origin HEAD $shortSha
     Write-Host "Manifest: $manifestPath"
     Write-Host "Encoding -> $Output"
 
-    $env:IMAGEARCHIVE_TOOL_COMMIT_URL = $commitUrl
+    # Footer right QR: same repo-root-at-commit link as the header QR.
+    $env:IMAGEARCHIVE_TOOL_COMMIT_URL = $repoAtCommitQr
     & dotnet run --project $cliProject -c $Configuration -f $Framework --no-build -- encode --manifest $manifestPath
     if ($LASTEXITCODE -ne 0) {
         throw "imga encode failed (exit $LASTEXITCODE)"
@@ -491,9 +553,10 @@ origin HEAD $shortSha
     $size = (Get-Item $Output).Length
     Write-Host ""
     Write-Host "Wrote ImageArchive of origin HEAD:"
-    Write-Host "  commit: $sha"
-    Write-Host "  image:  $Output ($size bytes)"
-    Write-Host "  format: $Format"
+    Write-Host "  commit:   $sha"
+    Write-Host "  repo URL: $repoAtCommitFull"
+    Write-Host "  image:    $Output ($size bytes)"
+    Write-Host "  format:   $Format"
 
     if (-not $SkipVerify) {
         Write-Host ""

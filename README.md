@@ -6,9 +6,9 @@ The container format is defined by RFC 1.0.0: [`docs/ImageArchive-RFC.md`](docs/
 
 ## Example image
 
-Multi-frame APNG of this repository at `origin/HEAD` (`cce977c`), produced by `scripts/New-OriginHeadImageArchive.ps1` (encode + decode/extract/diff verified). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
+Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`, shortened to fit the 60-char QR payload limit when needed). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
 
-![ImageArchive of origin HEAD (cce977c)](docs/images/origin-head.png)
+![ImageArchive of origin HEAD](docs/images/origin-head.png)
 
 Regenerate:
 
