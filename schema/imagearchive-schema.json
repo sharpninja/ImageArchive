@@ -63,7 +63,7 @@
     "dark": {
       "type": "boolean",
       "default": false,
-      "description": "When true, invert header and footer chrome (black background, light text and inverted QR polarity). Data-region payload colors are unchanged. CLI --dark forces true regardless of this field."
+      "description": "When true, invert header and footer chrome (black background, light text). QR codes remain black modules on white cells for scanner compatibility. Data-region payload colors are unchanged. CLI --dark forces true regardless of this field."
     },
     "header": {
       "type": "object",

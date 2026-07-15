@@ -6,7 +6,13 @@ The container format is defined by RFC 1.0.0: [`docs/ImageArchive-RFC.md`](docs/
 
 ## Example image
 
-Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` with **dark chrome** (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
+Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` with **dark chrome** and the project header banner (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
+
+Header banner (1024×68):
+
+![ImageArchive header banner](docs/images/readme-header-banner.png)
+
+Sample archive (dark chrome + banner):
 
 ![ImageArchive of origin HEAD (dark)](docs/images/origin-head.png)
 
@@ -140,7 +146,7 @@ dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.
 dotnet run --project src/ImageArchive.Cli -- decode --input archive.png --output extracted.bin
 ```
 
-Dark chrome can be set with CLI `--dark` and/or the manifest boolean `"dark": true` (schema field; default `false`). CLI `--dark` forces dark on. Data-region payload colors are unchanged.
+Dark chrome can be set with CLI `--dark` and/or the manifest boolean `"dark": true` (schema field; default `false`). CLI `--dark` forces dark on. Header/footer bands and text invert; QR codes stay black-on-white for phone scanners. Data-region payload colors are unchanged.
 
 `imga init` (alias: `imga manifest`) writes a starter manifest with placeholder fields. Edit `archive.source`, `output.path`, and related fields before encode. Manifest `output.path` and `output.format` (`png` or `webp`) control encode output. Optional env `IMAGEARCHIVE_TOOL_COMMIT_URL` sets the footer right QR.
 | Exit code | Meaning |

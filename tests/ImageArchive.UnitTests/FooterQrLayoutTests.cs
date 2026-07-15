@@ -120,14 +120,13 @@ public class FooterQrLayoutTests
         Assert.True(FrameRenderer.HeaderHasDarkBackground(frame));
         Assert.True(FrameRenderer.HeaderHasLightInk(frame));
         Assert.True(FrameRenderer.FooterHasTextInk(frame, dark: true));
+        // QR stays black-on-white for phone scanners (white cell on dark chrome)
         Assert.True(FrameRenderer.ValidateQrCellMargins(frame, leftFooter: true, dark: true));
         Assert.True(FrameRenderer.ValidateQrCellMargins(frame, leftFooter: false, dark: true));
 
-        // Dark QR cell margin is black
         var mi = ((0) * FrameGeometry.Width + (FrameGeometry.Width - FrameGeometry.QrCellSize)) * 3;
-        Assert.True(frame.Pixels[mi] < 5 && frame.Pixels[mi + 1] < 5);
+        Assert.True(frame.Pixels[mi] > 250 && frame.Pixels[mi + 1] > 250, "Header QR cell margin must remain white.");
 
-        // Left footer QR still decodes frame SHA under invert
         var bpp = frame.BytesPerPixel;
         var cell = new byte[FrameGeometry.QrCellSize * FrameGeometry.QrCellSize * bpp];
         var di = 0;

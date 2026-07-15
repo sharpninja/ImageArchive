@@ -35,30 +35,30 @@ internal static class FrameRenderer
         // Header free-form
         RenderHeader(rgb, header, frameIndex, workingDirectory, dark);
 
-        // Header QR (right)
+        // Header QR (right) — always black modules on white cell (phone scanners fail on inverted QR).
         var headerQrEnabled = header?.QrCode?.Enabled ?? true;
         var headerQrContent = header?.QrCode?.Content ?? "";
         if (headerQrEnabled && !string.IsNullOrEmpty(headerQrContent))
         {
             var mods = qr.EncodeModules(headerQrContent);
-            DefaultQrCodeService.CompositeQrOnRgb(rgb, mods, FrameGeometry.Width - FrameGeometry.QrCellSize, 0, invert: dark);
+            DefaultQrCodeService.CompositeQrOnRgb(rgb, mods, FrameGeometry.Width - FrameGeometry.QrCellSize, 0, invert: false);
         }
 
         // Data region
         PixelPacker.WriteDataRegion(rgb, dataRegionRgb);
 
-        // Left QR = frame SHA
+        // Left QR = frame SHA (standard polarity)
         var leftMods = qr.EncodeModules(frameShaHex);
-        DefaultQrCodeService.CompositeQrOnRgb(rgb, leftMods, 0, FrameGeometry.FooterFirstRow, invert: dark);
+        DefaultQrCodeService.CompositeQrOnRgb(rgb, leftMods, 0, FrameGeometry.FooterFirstRow, invert: false);
 
-        // Right QR = tool commit URL
+        // Right QR = tool commit URL (standard polarity)
         var rightContent = toolCommitUrl ?? "";
         if (rightContent.Length > qr.MaxPayloadLength)
             rightContent = rightContent[..qr.MaxPayloadLength];
         if (!string.IsNullOrEmpty(rightContent))
         {
             var rightMods = qr.EncodeModules(rightContent);
-            DefaultQrCodeService.CompositeQrOnRgb(rgb, rightMods, FrameGeometry.Width - FrameGeometry.QrCellSize, FrameGeometry.FooterFirstRow, invert: dark);
+            DefaultQrCodeService.CompositeQrOnRgb(rgb, rightMods, FrameGeometry.Width - FrameGeometry.QrCellSize, FrameGeometry.FooterFirstRow, invert: false);
         }
 
         // Footer text (center)
@@ -74,29 +74,29 @@ internal static class FrameRenderer
         };
     }
 
-    /// <summary>Inspect QR cell margins: 1 px quiet zone on all sides matching light/dark chrome.</summary>
+    /// <summary>Inspect QR cell margins: white 1 px quiet zone (QR cells stay light even under dark chrome).</summary>
     public static bool ValidateQrCellMargins(FrameBitmap frame, bool leftFooter, bool dark = false)
     {
+        _ = dark; // margins remain white for scannable black-on-white QR
         var bpp = frame.BytesPerPixel;
         var leftX = leftFooter ? 0 : FrameGeometry.Width - FrameGeometry.QrCellSize;
         var topY = FrameGeometry.FooterFirstRow;
-        Func<byte[], int, int, int, bool> isMargin = dark ? IsBlack : IsWhite;
         // Top margin
         for (var y = 0; y < FrameGeometry.QrMarginTop; y++)
         for (var x = 0; x < FrameGeometry.QrCellSize; x++)
-            if (!isMargin(frame.Pixels, leftX + x, topY + y, bpp)) return false;
+            if (!IsWhite(frame.Pixels, leftX + x, topY + y, bpp)) return false;
         // Bottom margin
         for (var y = 0; y < FrameGeometry.QrMarginBottom; y++)
         for (var x = 0; x < FrameGeometry.QrCellSize; x++)
-            if (!isMargin(frame.Pixels, leftX + x, topY + FrameGeometry.QrCellSize - 1 - y, bpp)) return false;
+            if (!IsWhite(frame.Pixels, leftX + x, topY + FrameGeometry.QrCellSize - 1 - y, bpp)) return false;
         // Left margin
         for (var y = 0; y < FrameGeometry.QrCellSize; y++)
         for (var dx = 0; dx < FrameGeometry.QrMarginLeft; dx++)
-            if (!isMargin(frame.Pixels, leftX + dx, topY + y, bpp)) return false;
+            if (!IsWhite(frame.Pixels, leftX + dx, topY + y, bpp)) return false;
         // Right margin
         for (var y = 0; y < FrameGeometry.QrCellSize; y++)
         for (var dx = 0; dx < FrameGeometry.QrMarginRight; dx++)
-            if (!isMargin(frame.Pixels, leftX + FrameGeometry.QrCellSize - 1 - dx, topY + y, bpp)) return false;
+            if (!IsWhite(frame.Pixels, leftX + FrameGeometry.QrCellSize - 1 - dx, topY + y, bpp)) return false;
         return true;
     }
 

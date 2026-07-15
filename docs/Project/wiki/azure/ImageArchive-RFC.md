@@ -103,7 +103,7 @@ Field names are **camelCase**:
 
 ### Manifest field `dark` (optional)
 
-Boolean, default `false`. When `true`, header and footer chrome use inverted colors (black background, light text, inverted QR polarity). The data-region payload is unchanged. The CLI flag `--dark` forces dark chrome regardless of the manifest value.
+Boolean, default `false`. When `true`, header and footer chrome use inverted colors (black background, light text). QR codes remain standard black modules on white cells so phone scanners can read them. The data-region payload is unchanged. The CLI flag `--dark` forces dark chrome regardless of the manifest value.
 
 Additional free-form text chunks are permitted.
 

@@ -43,6 +43,9 @@
 .PARAMETER Dark
   Invert header/footer chrome (manifest dark=true and encode --dark).
 
+.PARAMETER HeaderBanner
+  Optional 1024xN header image (default: docs/images/readme-header-banner.png when present).
+
 .EXAMPLE
   pwsh -File scripts/New-OriginHeadImageArchive.ps1
 
@@ -63,6 +66,7 @@ param(
     [switch]$SkipVerify,
     [switch]$KeepWorkDir,
     [switch]$Dark,
+    [string]$HeaderBanner = "",
     [string]$WorkDir = "",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -510,6 +514,29 @@ $repoName
 origin HEAD $shortSha
 "@.Trim()
 
+    if (-not $HeaderBanner) {
+        $defaultBanner = Join-Path $RepoRoot "docs\images\readme-header-banner.png"
+        if (Test-Path $defaultBanner) { $HeaderBanner = $defaultBanner }
+    }
+
+    $headerSection = [ordered]@{
+        qrCode = [ordered]@{
+            content = $repoAtCommitQr
+            enabled = $true
+        }
+    }
+    if ($HeaderBanner -and (Test-Path $HeaderBanner)) {
+        $bannerName = "header-banner.png"
+        Copy-Item -LiteralPath $HeaderBanner -Destination (Join-Path $stageFull $bannerName) -Force
+        $headerSection.type = "image"
+        $headerSection.imagePath = $bannerName
+        Write-Host "Header banner: $HeaderBanner"
+    }
+    else {
+        $headerSection.type = "text"
+        $headerSection.text = $headerText
+    }
+
     $manifest = [ordered]@{
         version = "1.0.0"
         encoder = [ordered]@{
@@ -530,14 +557,7 @@ origin HEAD $shortSha
             format = $Format
         }
         dark = [bool]$Dark
-        header = [ordered]@{
-            type   = "text"
-            text   = $headerText
-            qrCode = [ordered]@{
-                content = $repoAtCommitQr
-                enabled = $true
-            }
-        }
+        header = $headerSection
         frames = @(@{})
     }
 
