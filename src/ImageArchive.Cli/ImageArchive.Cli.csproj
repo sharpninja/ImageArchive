@@ -5,7 +5,7 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <RootNamespace>ImageArchive.Cli</RootNamespace>
     <AssemblyName>ImageArchive.Cli</AssemblyName>
-    <Version>1.0.0</Version>
+    <!-- Version comes from GitVersion.MsBuild / Directory.Build.props -->
 
     <!-- .NET tool package -->
     <PackAsTool>true</PackAsTool>

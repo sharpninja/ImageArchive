@@ -3,7 +3,7 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <RootNamespace>ImageArchive</RootNamespace>
     <AssemblyName>ImageArchive</AssemblyName>
-    <Version>1.0.0</Version>
+    <!-- Version comes from GitVersion.MsBuild / Directory.Build.props -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 

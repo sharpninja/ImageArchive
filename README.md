@@ -50,6 +50,15 @@ schema/imagearchive-schema.json
 examples/example-manifest.json
 ```
 
+## Versioning
+
+[GitVersion](https://gitversion.net/) drives assembly and NuGet versions (`GitVersion.yml`, `next-version: 0.5.0`, tag prefix `v`). Packable projects use **GitVersion.MsBuild**; Nuke injects the same version on compile/pack/publish.
+
+```powershell
+./build.ps1 Pack --configuration Release
+./build.ps1 Publish --configuration Release   # needs NUGET_API_KEY
+```
+
 ## Dependencies (product pins)
 
 | Package | Version | Notes |

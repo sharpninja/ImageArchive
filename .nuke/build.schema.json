@@ -30,6 +30,7 @@
         "Pack",
         "PackCliTool",
         "PackLibrary",
+        "Publish",
         "PublishCliTool",
         "PublishLibrary",
         "Restore",
@@ -126,7 +127,7 @@
         },
         "PackageVersion": {
           "type": "string",
-          "description": "Version override for packages (optional; otherwise project Version is used)"
+          "description": "Version override for packages (optional; otherwise GitVersion is used)"
         },
         "Solution": {
           "type": "string",

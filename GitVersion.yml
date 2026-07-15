@@ -1,0 +1,28 @@
+# ImageArchive versioning (GitVersion 6).
+# Release versions come from tags (v0.5.0, v0.5.1, ...).
+# The first release is v0.5.0 (tag on main). next-version is intentionally omitted:
+# GitVersion 6.8.x currently fails ConfiguredNextVersion for this repository.
+mode: ContinuousDelivery
+tag-prefix: v
+major-version-bump-message: '\+semver:\s?(breaking|major)'
+minor-version-bump-message: '\+semver:\s?(feature|minor)'
+patch-version-bump-message: '\+semver:\s?(fix|patch)'
+no-bump-message: '\+semver:\s?(none|skip)'
+assembly-versioning-scheme: MajorMinorPatch
+assembly-file-versioning-scheme: MajorMinorPatch
+commit-message-incrementing: Enabled
+branches:
+  main:
+    regex: ^master$|^main$
+    mode: ContinuousDelivery
+    label: ''
+    increment: Patch
+    is-mainline: true
+    source-branches: []
+  pull-request:
+    regex: ^(pull|pull\-requests|pr)[/-]
+    mode: ContinuousDelivery
+    label: pullRequest
+    increment: Inherit
+    source-branches:
+      - main
