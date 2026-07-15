@@ -102,9 +102,9 @@ public class RoundTripTests
 
     [Fact]
     [Trait("AC", "AC-FR-GEOM-002-4")]
-    public void Capacity_constant_2838528()
+    public void Capacity_constant_2734080()
     {
-        Assert.Equal(2_838_528, FrameGeometry.FrameCapacityBytes);
+        Assert.Equal(2_734_080, FrameGeometry.FrameCapacityBytes);
     }
 
     private static byte[] TamperPngManifestStreamSha(byte[] png, string newHash)

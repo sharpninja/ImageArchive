@@ -1,4 +1,3 @@
-using System.Text;
 using ImageArchive.Abstractions;
 using ImageArchive.Geometry;
 using ImageArchive.Integrity;
@@ -18,17 +17,23 @@ internal static class FrameRenderer
         HeaderManifestSection? header,
         string? toolCommitUrl,
         IQrCodeService qr,
-        string? workingDirectory)
+        string? workingDirectory,
+        bool dark = false)
     {
         if (dataRegionRgb.Length != FrameGeometry.FrameCapacityBytes)
             throw new ArgumentException("Invalid data region length.");
 
         var rgb = new byte[FrameGeometry.Width * FrameGeometry.Height * 3];
-        // White entire frame
+        // Light chrome default (white). Data region is overwritten by payload packing.
         rgb.AsSpan().Fill(255);
+        if (dark)
+        {
+            FillBand(rgb, 0, FrameGeometry.HeaderHeight, 0, 0, 0);
+            FillBand(rgb, FrameGeometry.FooterFirstRow, FrameGeometry.FooterHeight, 0, 0, 0);
+        }
 
         // Header free-form
-        RenderHeader(rgb, header, frameIndex, workingDirectory);
+        RenderHeader(rgb, header, frameIndex, workingDirectory, dark);
 
         // Header QR (right)
         var headerQrEnabled = header?.QrCode?.Enabled ?? true;
@@ -36,16 +41,15 @@ internal static class FrameRenderer
         if (headerQrEnabled && !string.IsNullOrEmpty(headerQrContent))
         {
             var mods = qr.EncodeModules(headerQrContent);
-            DefaultQrCodeService.CompositeQrOnRgb(rgb, mods, FrameGeometry.Width - FrameGeometry.QrCellSize, 0);
+            DefaultQrCodeService.CompositeQrOnRgb(rgb, mods, FrameGeometry.Width - FrameGeometry.QrCellSize, 0, invert: dark);
         }
 
         // Data region
         PixelPacker.WriteDataRegion(rgb, dataRegionRgb);
 
-        // Footer white already
         // Left QR = frame SHA
         var leftMods = qr.EncodeModules(frameShaHex);
-        DefaultQrCodeService.CompositeQrOnRgb(rgb, leftMods, 0, FrameGeometry.FooterFirstRow);
+        DefaultQrCodeService.CompositeQrOnRgb(rgb, leftMods, 0, FrameGeometry.FooterFirstRow, invert: dark);
 
         // Right QR = tool commit URL
         var rightContent = toolCommitUrl ?? "";
@@ -54,12 +58,12 @@ internal static class FrameRenderer
         if (!string.IsNullOrEmpty(rightContent))
         {
             var rightMods = qr.EncodeModules(rightContent);
-            DefaultQrCodeService.CompositeQrOnRgb(rgb, rightMods, FrameGeometry.Width - FrameGeometry.QrCellSize, FrameGeometry.FooterFirstRow);
+            DefaultQrCodeService.CompositeQrOnRgb(rgb, rightMods, FrameGeometry.Width - FrameGeometry.QrCellSize, FrameGeometry.FooterFirstRow, invert: dark);
         }
 
-        // Footer text (center) — exact lines required by RFC
+        // Footer text (center)
         var line1 = $"Frame {frameIndex + 1} of {frameCount}";
-        DrawFooterText(rgb, line1, frameShaHex);
+        DrawFooterText(rgb, line1, frameShaHex, dark);
 
         return new FrameBitmap
         {
@@ -70,31 +74,34 @@ internal static class FrameRenderer
         };
     }
 
-    /// <summary>Inspect QR cell margins: white T=2,R=2,B=1,L=1 quiet zone around 47×47 modules.</summary>
-    public static bool ValidateQrCellMargins(FrameBitmap frame, bool leftFooter)
+    /// <summary>Inspect QR cell margins: 1 px quiet zone on all sides matching light/dark chrome.</summary>
+    public static bool ValidateQrCellMargins(FrameBitmap frame, bool leftFooter, bool dark = false)
     {
         var bpp = frame.BytesPerPixel;
         var leftX = leftFooter ? 0 : FrameGeometry.Width - FrameGeometry.QrCellSize;
         var topY = FrameGeometry.FooterFirstRow;
-        // Top margin rows 0..1 must be white
+        Func<byte[], int, int, int, bool> isMargin = dark ? IsBlack : IsWhite;
+        // Top margin
         for (var y = 0; y < FrameGeometry.QrMarginTop; y++)
         for (var x = 0; x < FrameGeometry.QrCellSize; x++)
-            if (!IsWhite(frame.Pixels, leftX + x, topY + y, bpp)) return false;
-        // Bottom margin last 1 row white
+            if (!isMargin(frame.Pixels, leftX + x, topY + y, bpp)) return false;
+        // Bottom margin
+        for (var y = 0; y < FrameGeometry.QrMarginBottom; y++)
         for (var x = 0; x < FrameGeometry.QrCellSize; x++)
-            if (!IsWhite(frame.Pixels, leftX + x, topY + FrameGeometry.QrCellSize - 1, bpp)) return false;
-        // Left margin cols 0
+            if (!isMargin(frame.Pixels, leftX + x, topY + FrameGeometry.QrCellSize - 1 - y, bpp)) return false;
+        // Left margin
         for (var y = 0; y < FrameGeometry.QrCellSize; y++)
-            if (!IsWhite(frame.Pixels, leftX, topY + y, bpp)) return false;
-        // Right margin last 2 cols
+        for (var dx = 0; dx < FrameGeometry.QrMarginLeft; dx++)
+            if (!isMargin(frame.Pixels, leftX + dx, topY + y, bpp)) return false;
+        // Right margin
         for (var y = 0; y < FrameGeometry.QrCellSize; y++)
         for (var dx = 0; dx < FrameGeometry.QrMarginRight; dx++)
-            if (!IsWhite(frame.Pixels, leftX + FrameGeometry.QrCellSize - 1 - dx, topY + y, bpp)) return false;
+            if (!isMargin(frame.Pixels, leftX + FrameGeometry.QrCellSize - 1 - dx, topY + y, bpp)) return false;
         return true;
     }
 
-    /// <summary>Sample footer center for non-white ink (text drawn).</summary>
-    public static bool FooterHasTextInk(FrameBitmap frame)
+    /// <summary>Sample footer center for text ink (dark ink on light, or light ink on dark).</summary>
+    public static bool FooterHasTextInk(FrameBitmap frame, bool dark = false)
     {
         var bpp = frame.BytesPerPixel;
         var left = FrameGeometry.QrCellSize + 10;
@@ -103,8 +110,50 @@ internal static class FrameRenderer
         var bottom = FrameGeometry.Height - 10;
         for (var y = top; y < bottom; y++)
         for (var x = left; x < right; x++)
-            if (!IsWhite(frame.Pixels, x, y, bpp)) return true;
+        {
+            if (dark)
+            {
+                if (!IsBlack(frame.Pixels, x, y, bpp)) return true;
+            }
+            else
+            {
+                if (!IsWhite(frame.Pixels, x, y, bpp)) return true;
+            }
+        }
         return false;
+    }
+
+    /// <summary>True if header free-form band uses dark background (sample left of QR).</summary>
+    public static bool HeaderHasDarkBackground(FrameBitmap frame)
+    {
+        var bpp = frame.BytesPerPixel;
+        // Sample near top-left of free-form area
+        return IsBlack(frame.Pixels, 8, 8, bpp);
+    }
+
+    /// <summary>True if header free-form area has light ink (for dark chrome text).</summary>
+    public static bool HeaderHasLightInk(FrameBitmap frame)
+    {
+        var bpp = frame.BytesPerPixel;
+        var right = FrameGeometry.Width - FrameGeometry.QrCellSize - 4;
+        for (var y = 4; y < FrameGeometry.HeaderHeight - 4; y++)
+        for (var x = 4; x < right; x++)
+            if (!IsBlack(frame.Pixels, x, y, bpp)) return true;
+        return false;
+    }
+
+    private static void FillBand(byte[] rgb, int firstRow, int height, byte r, byte g, byte b)
+    {
+        for (var y = firstRow; y < firstRow + height; y++)
+        {
+            for (var x = 0; x < FrameGeometry.Width; x++)
+            {
+                var i = (y * FrameGeometry.Width + x) * 3;
+                rgb[i] = r;
+                rgb[i + 1] = g;
+                rgb[i + 2] = b;
+            }
+        }
     }
 
     private static bool IsWhite(byte[] pixels, int x, int y, int bpp)
@@ -113,14 +162,24 @@ internal static class FrameRenderer
         return pixels[i] > 250 && pixels[i + 1] > 250 && pixels[i + 2] > 250;
     }
 
-    private static void RenderHeader(byte[] rgb, HeaderManifestSection? header, int frameIndex, string? workingDirectory)
+    private static bool IsBlack(byte[] pixels, int x, int y, int bpp)
     {
-        if (header == null) return;
+        var i = (y * FrameGeometry.Width + x) * bpp;
+        return pixels[i] < 5 && pixels[i + 1] < 5 && pixels[i + 2] < 5;
+    }
+
+    private static void RenderHeader(byte[] rgb, HeaderManifestSection? header, int frameIndex, string? workingDirectory, bool dark)
+    {
+        if (header == null)
+        {
+            // Band already filled by caller for dark/light
+            return;
+        }
         var type = header.Type ?? HeaderContentType.Text;
         switch (type)
         {
             case HeaderContentType.Text:
-                DrawHeaderText(rgb, header.Text ?? "");
+                DrawHeaderText(rgb, header.Text ?? "", dark);
                 break;
             case HeaderContentType.Image:
                 if (!string.IsNullOrEmpty(header.ImagePath))
@@ -154,6 +213,7 @@ internal static class FrameRenderer
 
     private static void DrawHeaderImage(byte[] rgb, string path)
     {
+        // Header images keep original colors even when dark chrome is enabled.
         if (!File.Exists(path)) return;
         using var bmp = SKBitmap.Decode(path);
         if (bmp == null) return;
@@ -172,14 +232,14 @@ internal static class FrameRenderer
         }
     }
 
-    private static void DrawHeaderText(byte[] rgb, string text)
+    private static void DrawHeaderText(byte[] rgb, string text, bool dark)
     {
         using var surface = SKSurface.Create(new SKImageInfo(FrameGeometry.Width, FrameGeometry.HeaderHeight));
         var canvas = surface.Canvas;
-        canvas.Clear(SKColors.White);
-        using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+        canvas.Clear(dark ? SKColors.Black : SKColors.White);
+        using var paint = new SKPaint { Color = dark ? SKColors.White : SKColors.Black, IsAntialias = true };
         using var font = new SKFont(SKTypeface.Default, 14);
-        canvas.DrawText(text.Replace("\r\n", "\n").Replace('\n', ' '), 8, 28, SKTextAlign.Left, font, paint);
+        canvas.DrawText(text.Replace("\r\n", "\n").Replace('\n', ' '), 8, 36, SKTextAlign.Left, font, paint);
         using var img = surface.Snapshot();
         using var bmp = SKBitmap.FromImage(img);
         for (var y = 0; y < FrameGeometry.HeaderHeight; y++)
@@ -191,15 +251,15 @@ internal static class FrameRenderer
         }
     }
 
-    private static void DrawFooterText(byte[] rgb, string line1, string sha)
+    private static void DrawFooterText(byte[] rgb, string line1, string sha, bool dark)
     {
         using var surface = SKSurface.Create(new SKImageInfo(FrameGeometry.Width - 2 * FrameGeometry.QrCellSize, FrameGeometry.FooterHeight));
         var canvas = surface.Canvas;
-        canvas.Clear(SKColors.White);
-        using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+        canvas.Clear(dark ? SKColors.Black : SKColors.White);
+        using var paint = new SKPaint { Color = dark ? SKColors.White : SKColors.Black, IsAntialias = true };
         using var font = new SKFont(SKTypeface.Default, 8);
-        canvas.DrawText(line1, (FrameGeometry.Width - 2 * FrameGeometry.QrCellSize) / 2f, 18, SKTextAlign.Center, font, paint);
-        canvas.DrawText(sha, (FrameGeometry.Width - 2 * FrameGeometry.QrCellSize) / 2f, 32, SKTextAlign.Center, font, paint);
+        canvas.DrawText(line1, (FrameGeometry.Width - 2 * FrameGeometry.QrCellSize) / 2f, 24, SKTextAlign.Center, font, paint);
+        canvas.DrawText(sha, (FrameGeometry.Width - 2 * FrameGeometry.QrCellSize) / 2f, 42, SKTextAlign.Center, font, paint);
         using var img = surface.Snapshot();
         using var bmp = SKBitmap.FromImage(img);
         var left = FrameGeometry.QrCellSize;
@@ -214,8 +274,6 @@ internal static class FrameRenderer
 
     public static string ReadFooterLine2Sha(FrameBitmap frame)
     {
-        // Recompute expected SHA from data region — footer text OCR is unreliable at 8pt.
-        // Tests that need footer Line2 equality use data-region hash which is written as Line2.
         var data = PixelPacker.ExtractDataRegion(frame);
         return Sha256Hex.Compute(data);
     }

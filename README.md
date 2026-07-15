@@ -6,20 +6,21 @@ The container format is defined by RFC 1.0.0: [`docs/ImageArchive-RFC.md`](docs/
 
 ## Example image
 
-Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`, shortened to fit the 60-char QR payload limit when needed). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
+Multi-frame APNG of this repository at `origin/HEAD`, produced by `scripts/New-OriginHeadImageArchive.ps1` with **dark chrome** (encode + decode/extract/diff verified). Header and footer QRs encode the **repo root at that commit** (`https://github.com/<owner>/<repo>/tree/<sha>`). Open the file in an APNG-capable viewer to step frames; GitHub may show only the first frame.
 
-![ImageArchive of origin HEAD](docs/images/origin-head.png)
+![ImageArchive of origin HEAD (dark)](docs/images/origin-head.png)
 
 Regenerate:
 
 ```powershell
-pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png
+pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark
 ```
 
 ## Features
 
-- Fixed **1024×1024** frames (50 px header, 924 px data, 50 px footer)
-- Data region capacity **2,838,528** bytes per frame (RGB, zero-padded final frame)
+- Fixed **1024×1024** frames (67 px header, 890 px data, 67 px footer)
+- Data region capacity **2,734,080** bytes per frame (RGB, zero-padded final frame)
+- QR cells **67×67** (65×65 modules, **1 px** margin all sides); general payload max **200** chars
 - Header: free-form text, image, or numbered folder round-robin; top-right QR
 - Footer: left QR (frame data SHA-256), `Frame N of M` + SHA text, right QR (tool commit URL)
 - Required camelCase text metadata (`encoderName`, `jsonManifest`, `jsonSchema`, …) plus `streamSha256`
@@ -135,8 +136,11 @@ imga init
 imga init --output path/to/manifest.json --force
 
 dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.json
+dotnet run --project src/ImageArchive.Cli -- encode --manifest path/to/manifest.json --dark
 dotnet run --project src/ImageArchive.Cli -- decode --input archive.png --output extracted.bin
 ```
+
+Dark chrome can be set with CLI `--dark` and/or the manifest boolean `"dark": true` (schema field; default `false`). CLI `--dark` forces dark on. Data-region payload colors are unchanged.
 
 `imga init` (alias: `imga manifest`) writes a starter manifest with placeholder fields. Edit `archive.source`, `output.path`, and related fields before encode. Manifest `output.path` and `output.format` (`png` or `webp`) control encode output. Optional env `IMAGEARCHIVE_TOOL_COMMIT_URL` sets the footer right QR.
 | Exit code | Meaning |
@@ -176,7 +180,7 @@ Public entry points include `IImageArchiveEncoder` / `IImageArchiveDecoder`, `II
 |-----|---------|
 | [`docs/ImageArchive-RFC.md`](docs/ImageArchive-RFC.md) | Format specification (canonical) |
 | [`schema/imagearchive-schema.json`](schema/imagearchive-schema.json) | Manifest JSON Schema (`streamSha256`) |
-| [`docs/qr-payload-limits.md`](docs/qr-payload-limits.md) | QR 47×47 payload limits |
+| [`docs/qr-payload-limits.md`](docs/qr-payload-limits.md) | QR 65×65 payload limits |
 | [`docs/plans/ImageArchive-Implementation-Plan.md`](docs/plans/ImageArchive-Implementation-Plan.md) | Implementation plan / public API |
 | [`docs/receipts-requirements-rfc-1.0.0.md`](docs/receipts-requirements-rfc-1.0.0.md) | FR/TR/TEST AC coverage receipt |
 | [`docs/Project/`](docs/Project/) | Exported requirements documents |

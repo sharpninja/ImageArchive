@@ -60,6 +60,11 @@
       "pattern": "^[a-fA-F0-9]{64}$",
       "description": "SHA-256 (hex) of the concatenated data-region byte stream after all frames (RFC §9). Written by the encoder into the embedded jsonManifest; optional on input manifests before encode."
     },
+    "dark": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, invert header and footer chrome (black background, light text and inverted QR polarity). Data-region payload colors are unchanged. CLI --dark forces true regardless of this field."
+    },
     "header": {
       "type": "object",
       "description": "Default header configuration (can be overridden per frame)",

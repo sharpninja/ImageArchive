@@ -40,11 +40,17 @@
 .PARAMETER Framework
   Target framework for running the multi-TFM CLI. Default: net10.0.
 
+.PARAMETER Dark
+  Invert header/footer chrome (manifest dark=true and encode --dark).
+
 .EXAMPLE
   pwsh -File scripts/New-OriginHeadImageArchive.ps1
 
 .EXAMPLE
   pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output .\artifacts\tip.png -KeepWorkDir
+
+.EXAMPLE
+  pwsh -File scripts/New-OriginHeadImageArchive.ps1 -Output docs/images/origin-head.png -Dark
 #>
 [CmdletBinding()]
 param(
@@ -56,6 +62,7 @@ param(
     [switch]$SkipFetch,
     [switch]$SkipVerify,
     [switch]$KeepWorkDir,
+    [switch]$Dark,
     [string]$WorkDir = "",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -143,8 +150,8 @@ function Get-FileSha256Hex([string]$Path) {
     return $hash.Hash.ToLowerInvariant()
 }
 
-# QR non-hex payload ceiling (DefaultQrCodeService.MaxPayloadLength).
-$script:QrMaxPayloadLength = 60
+# QR non-hex payload ceiling (DefaultQrCodeService.MaxPayloadLength for 65x65 modules).
+$script:QrMaxPayloadLength = 200
 
 function ConvertTo-HttpsRepoRoot {
     param([Parameter(Mandatory)][string]$RemoteUrl)
@@ -522,6 +529,7 @@ origin HEAD $shortSha
             path   = $Output.Replace('\', '/')
             format = $Format
         }
+        dark = [bool]$Dark
         header = [ordered]@{
             type   = "text"
             text   = $headerText
@@ -537,11 +545,16 @@ origin HEAD $shortSha
     [System.IO.File]::WriteAllText($manifestPath, $json + "`n")
 
     Write-Host "Manifest: $manifestPath"
-    Write-Host "Encoding -> $Output"
+    Write-Host "Encoding -> $Output$(if ($Dark) { ' (dark)' })"
 
     # Footer right QR: same repo-root-at-commit link as the header QR.
     $env:IMAGEARCHIVE_TOOL_COMMIT_URL = $repoAtCommitQr
-    & dotnet run --project $cliProject -c $Configuration -f $Framework --no-build -- encode --manifest $manifestPath
+    $encodeArgs = @(
+        "run", "--project", $cliProject, "-c", $Configuration, "-f", $Framework, "--no-build", "--",
+        "encode", "--manifest", $manifestPath
+    )
+    if ($Dark) { $encodeArgs += "--dark" }
+    & dotnet @encodeArgs
     if ($LASTEXITCODE -ne 0) {
         throw "imga encode failed (exit $LASTEXITCODE)"
     }

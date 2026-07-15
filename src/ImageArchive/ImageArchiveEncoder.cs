@@ -19,6 +19,8 @@ public sealed class ImageArchiveEncodeOptions
     public IManifestValidator? ManifestValidator { get; init; }
     public string? ToolCommitUrl { get; init; }
     public string? WorkingDirectory { get; init; }
+    /// <summary>When true, invert header/footer chrome (black background, light foreground/QR).</summary>
+    public bool Dark { get; init; }
 }
 
 public sealed class EncodeResult
@@ -70,6 +72,11 @@ public sealed class ImageArchiveEncoder : IImageArchiveEncoder
         while (manifest.Frames.Count < frameCount)
             manifest.Frames.Add(new FrameManifestSection());
 
+        // CLI --dark / options.Dark forces dark; otherwise honor manifest.dark.
+        // Persist effective value so embedded jsonManifest matches chrome.
+        if (options.Dark)
+            manifest.Dark = true;
+        var dark = manifest.Dark;
         for (var i = 0; i < frameCount; i++)
         {
             var remaining = archiveBytes.Length - offset;
@@ -79,7 +86,8 @@ public sealed class ImageArchiveEncoder : IImageArchiveEncoder
             var sha = Sha256Hex.Compute(dataRegion);
             var header = manifest.Frames[i].Header ?? manifest.Header;
             frames.Add(FrameRenderer.RenderFrame(
-                i, frameCount, dataRegion, sha, header, options.ToolCommitUrl, qr, options.WorkingDirectory));
+                i, frameCount, dataRegion, sha, header, options.ToolCommitUrl, qr, options.WorkingDirectory,
+                dark: dark));
             offset += take;
         }
 

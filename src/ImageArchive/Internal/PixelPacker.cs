@@ -6,7 +6,7 @@ namespace ImageArchive.Internal;
 internal static class PixelPacker
 {
     /// <summary>
-    /// Packs archive bytes into the data region of an RGB24 frame (rows 50..973).
+    /// Packs archive bytes into the data region of an RGB24 frame (rows HeaderHeight .. FooterFirstRow-1).
     /// Remaining capacity is zero-filled (included in integrity hash).
     /// </summary>
     public static byte[] PackDataRegion(ReadOnlySpan<byte> payloadSlice)

@@ -10,17 +10,17 @@ public class HeaderAndCliTests
 {
     [Fact]
     [Trait("AC", "AC-FR-HDR-001-4")]
-    public void Header_1024x50_image_is_embedded()
+    public void Header_1024x67_image_is_embedded()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ia-hdr-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(dir);
         try
         {
             var imgPath = Path.Combine(dir, "header.png");
-            using (var bmp = new SKBitmap(1024, 50))
+            using (var bmp = new SKBitmap(1024, FrameGeometry.HeaderHeight))
             {
                 for (var x = 0; x < 1024; x++)
-                for (var y = 0; y < 50; y++)
+                for (var y = 0; y < FrameGeometry.HeaderHeight; y++)
                     bmp.SetPixel(x, y, new SKColor((byte)(x % 256), (byte)(y * 5), 128));
                 using var img = SKImage.FromBitmap(bmp);
                 using var data = img.Encode(SKEncodedImageFormat.Png, 100);
@@ -59,7 +59,7 @@ public class HeaderAndCliTests
             for (var i = 0; i < 3; i++)
             {
                 var p = Path.Combine(folder, $"{i:000}.png");
-                using var bmp = new SKBitmap(100, 50);
+                using var bmp = new SKBitmap(100, FrameGeometry.HeaderHeight);
                 bmp.Erase(new SKColor((byte)(i * 40), 0, 0));
                 using var img = SKImage.FromBitmap(bmp);
                 using var data = img.Encode(SKEncodedImageFormat.Png, 100);

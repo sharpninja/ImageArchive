@@ -76,7 +76,8 @@ public static class Program
         encoder.Encode(manifest, output, new ImageArchiveEncodeOptions
         {
             WorkingDirectory = workDir,
-            ToolCommitUrl = Environment.GetEnvironmentVariable("IMAGEARCHIVE_TOOL_COMMIT_URL") ?? "https://github.com/sharpninja/ImageArchive"
+            ToolCommitUrl = Environment.GetEnvironmentVariable("IMAGEARCHIVE_TOOL_COMMIT_URL") ?? "https://github.com/sharpninja/ImageArchive",
+            Dark = HasFlag(args, "--dark")
         });
         return ExitSuccess;
     }
@@ -152,7 +153,7 @@ public static class Program
     {
         Console.Error.WriteLine("Usage:");
         Console.Error.WriteLine("  imga init [--output <path>] [--force]   Write a blank manifest (default: manifest.json)");
-        Console.Error.WriteLine("  imga encode --manifest <path>");
+        Console.Error.WriteLine("  imga encode --manifest <path> [--dark]  Encode; --dark inverts header/footer chrome");
         Console.Error.WriteLine("  imga decode --input <image> --output <path>");
     }
 

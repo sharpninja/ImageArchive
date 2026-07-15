@@ -8,11 +8,12 @@ using ZXing.SkiaSharp;
 
 namespace ImageArchive.Qr;
 
-/// <summary>QR encode (QRCoder) + decode (ZXing). Max payload for 47×47 documented in docs/qr-payload-limits.md.</summary>
+/// <summary>QR encode (QRCoder) + decode (ZXing). Max payload for 65×65 documented in docs/qr-payload-limits.md.</summary>
 public sealed class DefaultQrCodeService : IQrCodeService
 {
-    // ECC level M at version that fits in 47 modules; conservative alphanumeric-ish limit for URLs
-    public int MaxPayloadLength => 60;
+    // ECC M; version ≤10 (~57 modules ISO, ~65 with library quiet zone) fits QrModuleSize=65.
+    // Byte-mode capacity at version 10 ECC-M is ~213; keep a safety margin under that.
+    public int MaxPayloadLength => 200;
 
     public bool[,] EncodeModules(string payload)
     {
@@ -22,10 +23,10 @@ public sealed class DefaultQrCodeService : IQrCodeService
             throw new QrPayloadTooLongException(max, payload.Length);
 
         using var gen = new QRCodeGenerator();
-        // ECC M; request forced version only if needed — prefer native matrix centered in 47×47 (no scale-up distortion)
+        // ECC M; prefer native matrix centered in 65×65 (no scale-up distortion)
         var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M);
         var modules = data.ModuleMatrix;
-        var n = modules.Count; // e.g. 21..45 for versions that fit; 49 would overflow
+        var n = modules.Count;
         if (n > FrameGeometry.QrModuleSize)
             throw new QrPayloadTooLongException(MaxPayloadLength, payload.Length);
 
@@ -59,29 +60,31 @@ public sealed class DefaultQrCodeService : IQrCodeService
             {
                 PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.QR_CODE },
                 TryHarder = true,
+                TryInverted = true, // dark chrome: white modules on black cell
                 PureBarcode = false,
                 CharacterSet = "UTF-8"
             }
         };
         var result = reader.Decode(bmp);
         if (result != null) return result.Text ?? "";
-        // Retry upscaled 4x for tiny 50×50 cells
+        // Retry upscaled 4x for small QR cells
         using var big = bmp.Resize(new SKImageInfo(width * 4, height * 4), SKSamplingOptions.Default);
         if (big == null) return "";
         return reader.Decode(big)?.Text ?? "";
     }
 
-    public static void CompositeQrOnRgb(byte[] frameRgb, bool[,] modules, int cellLeft, int cellTop)
+    // invert: dark chrome uses black cell + white modules (still scannable with TryInverted).
+    public static void CompositeQrOnRgb(byte[] frameRgb, bool[,] modules, int cellLeft, int cellTop, bool invert = false)
     {
-        // white cell
+        byte bg = invert ? (byte)0 : (byte)255;
+        byte fg = invert ? (byte)255 : (byte)0;
         for (var y = 0; y < FrameGeometry.QrCellSize; y++)
         {
             for (var x = 0; x < FrameGeometry.QrCellSize; x++)
             {
-                SetRgb(frameRgb, cellLeft + x, cellTop + y, 255, 255, 255);
+                SetRgb(frameRgb, cellLeft + x, cellTop + y, bg, bg, bg);
             }
         }
-        // modules with margins
         for (var my = 0; my < FrameGeometry.QrModuleSize; my++)
         {
             for (var mx = 0; mx < FrameGeometry.QrModuleSize; mx++)
@@ -89,7 +92,7 @@ public sealed class DefaultQrCodeService : IQrCodeService
                 if (!modules[my, mx]) continue;
                 var px = cellLeft + FrameGeometry.QrMarginLeft + mx;
                 var py = cellTop + FrameGeometry.QrMarginTop + my;
-                SetRgb(frameRgb, px, py, 0, 0, 0);
+                SetRgb(frameRgb, px, py, fg, fg, fg);
             }
         }
     }

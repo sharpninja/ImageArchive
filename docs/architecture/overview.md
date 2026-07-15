@@ -5,8 +5,8 @@ ImageArchive is a .NET multi-target library and CLI that embeds an archive byte 
 ## Layers
 
 1. **Facade** (`ImageArchiveEncoder` / `ImageArchiveDecoder`): validate manifest, load/process archive, pack frames, write/read container, verify integrity.
-2. **Geometry and packing** (`FrameGeometry`, internal `PixelPacker`): fixed 1024×1024 layout; RGB data region 2,838,528 bytes.
-3. **Rendering** (internal `FrameRenderer`): header free-form content, footer text, QR cells (50×50 with margins T=2,R=2,B=1,L=1).
+2. **Geometry and packing** (`FrameGeometry`, internal `PixelPacker`): fixed 1024×1024 layout; header/footer 67 px; RGB data region 2,734,080 bytes (890 rows).
+3. **Rendering** (internal `FrameRenderer`): header free-form content, footer text, QR cells (67×67 with 65×65 modules and 1 px margins on all sides).
 4. **Codecs** (`ImageArchive.Codecs.Skia`): SkiaSharp raster path; APNG mux/demux; animated WebP RIFF mux/demux.
 5. **Manifest** (`JsonSchemaManifestValidator`, `ManifestJson`, `BlankManifest`): draft 2020-12 schema including `streamSha256`; blank starter templates for CLI `init`.
 6. **Sources** (`DefaultArchiveSourceLoader`): raw/zip/tar files; git as compressed tar of `.git` + worktree (excludes `bin`/`obj`).

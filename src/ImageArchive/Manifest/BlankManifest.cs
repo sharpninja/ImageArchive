@@ -33,6 +33,7 @@ public static class BlankManifest
             "path": "./archive.png",
             "format": "png"
           },
+          "dark": false,
           "header": {
             "type": "text",
             "text": "ImageArchive",

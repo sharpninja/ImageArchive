@@ -10,6 +10,8 @@ public sealed class ImageArchiveManifest
     public ArchiveManifestSection Archive { get; set; } = new();
     public OutputManifestSection Output { get; set; } = new();
     public string? StreamSha256 { get; set; }
+    /// <summary>When true, invert header/footer chrome (black background, light foreground/QR).</summary>
+    public bool Dark { get; set; }
     public HeaderManifestSection? Header { get; set; }
     public List<FrameManifestSection> Frames { get; set; } = new() { new() };
     public string? Preprocessor { get; set; }

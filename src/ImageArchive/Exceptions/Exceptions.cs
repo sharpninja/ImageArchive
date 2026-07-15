@@ -39,7 +39,7 @@ public sealed class QrPayloadTooLongException : ImageArchiveException
     public int ActualLength { get; }
 
     public QrPayloadTooLongException(int maxLength, int actualLength)
-        : base($"QR payload length {actualLength} exceeds max {maxLength} for 47x47 modules.")
+        : base($"QR payload length {actualLength} exceeds max {maxLength} for the configured QR module size.")
     {
         MaxLength = maxLength;
         ActualLength = actualLength;
